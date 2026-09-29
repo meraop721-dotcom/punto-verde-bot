@@ -17,6 +17,8 @@ DELIVERY_FEE_GUADALUPE=os.getenv('DELIVERY_FEE_GUADALUPE','3.00').strip()
 DELIVERY_FEE_CHEPEN=os.getenv('DELIVERY_FEE_CHEPEN','5.00').strip()
 SATURDAY_GRILL_PRICE=os.getenv('SATURDAY_GRILL_PRICE','').strip()
 ADMIN_KEY=os.getenv('ADMIN_KEY','puntoverde123').strip()
+YAPE_NUMBER=os.getenv('YAPE_NUMBER','921780382').strip()
+YAPE_HOLDER=os.getenv('YAPE_HOLDER','Oscar Jean Pierre Mera Sanchez').strip()
 DB_PATH=os.getenv('DB_PATH','punto_verde.db')
 TZ=ZoneInfo('America/Lima')
 
@@ -48,6 +50,50 @@ def total_amount(mode, zone=None):
         return money(base+delivery)
     except Exception:
         return 'por confirmar'
+
+def total_numeric(mode, zone=None):
+    try:
+        base=float(MENU_PRICE)
+        delivery=float(delivery_fee(zone)) if mode=='Delivery' else 0.0
+        return base+delivery
+    except Exception:
+        return None
+
+def order_summary(data):
+    zone=data.get('zona')
+    delivery_value=money(delivery_fee(zone)) if data.get('modo')=='Delivery' else 'S/ 0.00'
+    total=total_amount(data.get('modo'),zone)
+
+    location=''
+    if data.get('modo')=='Delivery':
+        location=(
+            f"\nZona: {data.get('zona','')}\n"
+            f"Dirección: {data.get('direccion','')}"
+        )
+
+    payment=f"\n💳 Pago: {data.get('pago','')}"
+    if data.get('pago')=='Yape':
+        payment += f"\nOperación Yape: {data.get('operacion_yape','')}"
+    elif data.get('pago')=='Efectivo':
+        payment += f"\nPaga con: {data.get('efectivo_entrega','')}"
+        if data.get('vuelto'):
+            payment += f"\nVuelto aprox.: {data.get('vuelto')}"
+
+    return (
+        "🧾 *RESUMEN DEL PEDIDO*\n\n"
+        f"👤 Cliente: {data.get('cliente','')}\n"
+        f"Entrada: {data.get('entrada','')}\n"
+        f"Segundo: {data.get('segundo','')}\n"
+        f"Modalidad: {data.get('modo','')}"
+        f"{location}\n"
+        f"Hora: {data.get('hora','')}\n\n"
+        f"💵 Precio: {money(MENU_PRICE)}\n"
+        f"🚚 Delivery: {delivery_value}\n"
+        f"💰 *TOTAL: {total}*"
+        f"{payment}\n\n"
+        "1️⃣ Sí, confirmar\n"
+        "2️⃣ No, cancelar"
+    )
 
 MAIN=("🌿 *PUNTO VERDE EXPRESS* 🌿\nMenús & Parrillas\n\n¡Hola! 👋 ¿Qué deseas hacer?\n"
       "1️⃣ Ver menú de hoy\n2️⃣ Hacer un pedido\n3️⃣ Parrillas del sábado\n4️⃣ Estado de mi pedido\n5️⃣ Hablar con una persona\n\nResponde con el número de una opción.")
@@ -142,12 +188,15 @@ def tracking_text(order):
         lines.append(f'{mark} {icon} {name}')
     if status=='Cancelado':
         lines.append('❌ Pedido cancelado')
+    customer=f"\n👤 Cliente: {details.get('cliente','')}" if details.get('cliente') else ''
     if details.get('modo')=='Delivery':
         extra=f"\n📍 {details.get('zona','')} — {details.get('direccion','')}"
     else:
         extra='\n📍 Modalidad: Recojo'
     return (
-        f"📦 *SEGUIMIENTO DEL PEDIDO #{oid}*\n\n"
+        f"📦 *SEGUIMIENTO DEL PEDIDO #{oid}*"
+        + customer
+        + "\n\n"
         + "\n".join(lines)
         + f"\n\nEstado actual: *{status}*"
         + extra
@@ -203,9 +252,29 @@ def reply(phone,text,force_day=None):
         m=MENUS[data['day']]; data['entrada']=m['entradas'][int(t)-1]; setsess(phone,'segundo',data); opts='\n'.join(f'{i+1}. {x}' for i,x in enumerate(m['segundos']))
         return f"✅ Entrada: *{data['entrada']}*\n\n🍛 Elige tu segundo:\n{opts}\n\nResponde 1, 2 o 3."
     if state=='segundo':
-        if t not in {'1','2','3'}: return 'Responde solo *1, 2 o 3* para elegir el segundo.'
-        m=MENUS[data['day']]; data['segundo']=m['segundos'][int(t)-1]; setsess(phone,'modo',data)
-        return f"✅ Segundo: *{data['segundo']}*\n\n¿Cómo deseas recibirlo?\n1️⃣ Recojo\n2️⃣ Delivery"
+        if t not in {'1','2','3'}:
+            return 'Responde solo *1, 2 o 3* para elegir el segundo.'
+        m=MENUS[data['day']]
+        data['segundo']=m['segundos'][int(t)-1]
+        setsess(phone,'nombre_cliente',data)
+        return (
+            f"✅ Segundo: *{data['segundo']}*\n\n"
+            "👤 ¿A nombre de quién estará el pedido?\n"
+            "Escribe nombre y apellido.\n"
+            "Ejemplo: *Andrea López*"
+        )
+
+    if state=='nombre_cliente':
+        if len(raw) < 3:
+            return 'Escribe un nombre válido, por ejemplo: *Andrea López*.'
+        data['cliente']=raw
+        setsess(phone,'modo',data)
+        return (
+            f"Gracias, *{data['cliente']}*.\n\n"
+            "¿Cómo deseas recibir tu pedido?\n"
+            "1️⃣ Recojo\n"
+            "2️⃣ Delivery"
+        )
     if state=='modo':
         if t not in {'1','2'}:
             return 'Responde *1* para recojo o *2* para delivery.'
@@ -241,26 +310,70 @@ def reply(phone,text,force_day=None):
 
     if state=='hora':
         data['hora']=raw
-        setsess(phone,'confirmar',data)
-        zone = data.get('zona')
-        delivery_value = money(delivery_fee(zone)) if data['modo']=='Delivery' else 'S/ 0.00'
-        total = total_amount(data['modo'], zone)
-        extra = ''
-        if data['modo']=='Delivery':
-            extra = f"\nZona: {data.get('zona','')}\nDirección: {data.get('direccion','')}"
+        setsess(phone,'metodo_pago',data)
+        total=total_amount(data.get('modo'),data.get('zona'))
         return (
-            f"🧾 *RESUMEN DEL PEDIDO*\n\n"
-            f"Entrada: {data['entrada']}\n"
-            f"Segundo: {data['segundo']}\n"
-            f"Modalidad: {data['modo']}"
-            f"{extra}\n"
-            f"Hora: {data['hora']}\n\n"
-            f"💵 Precio: {money(MENU_PRICE)}\n"
-            f"🚚 Delivery: {delivery_value}\n"
-            f"💰 *TOTAL: {total}*\n\n"
-            "1️⃣ Sí, confirmar\n"
-            "2️⃣ No, cancelar"
+            f"💰 Total del pedido: *{total}*\n\n"
+            "¿Cómo deseas pagar?\n"
+            "1️⃣ Yape\n"
+            "2️⃣ Efectivo\n\n"
+            "Responde 1 o 2."
         )
+
+    if state=='metodo_pago':
+        if t not in {'1','2'}:
+            return 'Responde *1* para Yape o *2* para efectivo.'
+
+        if t=='1':
+            data['pago']='Yape'
+            setsess(phone,'yape_operacion',data)
+            return (
+                "📱 *PAGO POR YAPE*\n\n"
+                f"Yapea a: *{YAPE_NUMBER}*\n"
+                f"Titular: *{YAPE_HOLDER}*\n"
+                f"Monto: *{total_amount(data.get('modo'),data.get('zona'))}*\n\n"
+                "Para esta simulación, escribe un código de operación "
+                "(por ejemplo: *123456*)."
+            )
+
+        data['pago']='Efectivo'
+        setsess(phone,'efectivo_monto',data)
+        return (
+            "💵 *PAGO EN EFECTIVO*\n\n"
+            f"Total: *{total_amount(data.get('modo'),data.get('zona'))}*\n"
+            "¿Con cuánto pagarás?\n\n"
+            "Escribe el monto, por ejemplo *20*, o escribe *exacto*."
+        )
+
+    if state=='yape_operacion':
+        if len(raw) < 3:
+            return 'Escribe un código de operación válido para la simulación.'
+        data['operacion_yape']=raw
+        setsess(phone,'confirmar',data)
+        return order_summary(data)
+
+    if state=='efectivo_monto':
+        total_num=total_numeric(data.get('modo'),data.get('zona'))
+
+        if t in {'exacto','monto exacto','justo'}:
+            data['efectivo_entrega']='Monto exacto'
+            data['vuelto']='S/ 0.00'
+        else:
+            try:
+                amount=float(raw.replace('s/','').replace(',','.').strip())
+                if total_num is not None and amount < total_num:
+                    return (
+                        f"El total es *{money(total_num)}*. "
+                        "Indica un monto igual o mayor, o escribe *exacto*."
+                    )
+                data['efectivo_entrega']=money(amount)
+                if total_num is not None:
+                    data['vuelto']=money(amount-total_num)
+            except Exception:
+                return 'Escribe un monto, por ejemplo *20*, o escribe *exacto*.'
+
+        setsess(phone,'confirmar',data)
+        return order_summary(data)
     if state=='confirmar':
         if t=='1':
             oid=new_order(phone,data); setsess(phone,'main',{}); return f'✅ *Pedido #{oid} recibido*\nTu pedido quedó registrado.\n\n📦 Para seguirlo, vuelve al menú y elige *4. Estado de mi pedido*.\n\nGracias por elegir Punto Verde Express 🌿\nEscribe *0* para volver.'
@@ -341,11 +454,20 @@ def admin_panel():
             '<option value="'+s+'"'+(' selected' if s==status else '')+'>'+s+'</option>'
             for s in allowed
         )
+        cliente=d.get('cliente','Sin nombre')
+        pago=d.get('pago','Sin registrar')
+        if pago=='Yape' and d.get('operacion_yape'):
+            pago += f" — Op. {d.get('operacion_yape')}"
+        elif pago=='Efectivo' and d.get('efectivo_entrega'):
+            pago += f" — Paga con {d.get('efectivo_entrega')}"
+
         card=(
             '<div class="card">'
             f'<h3>Pedido #{oid}</h3>'
+            f'<div><b>Cliente:</b> {cliente}</div>'
             f'<div><b>Pedido:</b> {pedido}</div>'
             f'<div><b>Modalidad:</b> {modalidad}</div>'
+            f'<div><b>Pago:</b> {pago}</div>'
             f'<div><b>Estado:</b> {status}</div>'
             f'<form method="post" action="/admin/order/{oid}?key={ADMIN_KEY}">'
             f'<select name="status">{opts}</select>'
