@@ -12,8 +12,8 @@ ACCESS_TOKEN=os.getenv('WHATSAPP_ACCESS_TOKEN','')
 PHONE_NUMBER_ID=os.getenv('WHATSAPP_PHONE_NUMBER_ID','')
 GRAPH_API_VERSION=os.getenv('GRAPH_API_VERSION','')
 APP_SECRET=os.getenv('META_APP_SECRET','')
-MENU_PRICE=os.getenv('MENU_PRICE','').strip()
-DELIVERY_FEE=os.getenv('DELIVERY_FEE','').strip()
+MENU_PRICE=os.getenv('MENU_PRICE','12.00').strip()
+DELIVERY_FEE=os.getenv('DELIVERY_FEE','3.00').strip()
 SATURDAY_GRILL_PRICE=os.getenv('SATURDAY_GRILL_PRICE','').strip()
 DB_PATH=os.getenv('DB_PATH','punto_verde.db')
 TZ=ZoneInfo('America/Lima')
@@ -25,6 +25,20 @@ MENUS={
 3:{'dia':'Jueves','entradas':['Caldo de mote','Crema de ocopa','Causa de pollo'],'segundos':['Cau-cau','Saltado de coliflor','Escabeche de pollo']},
 4:{'dia':'Viernes','entradas':['Empanadas de carne','Parihuela','Causa de atún'],'segundos':['Milanesa de pollo','Escabeche de pescado','Chaufa de pescado']},
 }
+
+def money(value):
+    try:
+        return f"S/ {float(value):.2f}"
+    except Exception:
+        return f"S/ {value}" if value else 'por confirmar'
+
+def total_amount(mode):
+    try:
+        base=float(MENU_PRICE)
+        delivery=float(DELIVERY_FEE) if mode=='Delivery' else 0.0
+        return money(base+delivery)
+    except Exception:
+        return 'por confirmar'
 
 MAIN=("🌿 *PUNTO VERDE EXPRESS* 🌿\nMenús & Parrillas\n\n¡Hola! 👋 ¿Qué deseas hacer?\n"
       "1️⃣ Ver menú de hoy\n2️⃣ Hacer un pedido\n3️⃣ Parrillas del sábado\n4️⃣ Estado de mi pedido\n5️⃣ Hablar con una persona\n\nResponde con el número de una opción.")
@@ -59,7 +73,7 @@ def menu_text(day=None):
     day=datetime.now(TZ).weekday() if day is None else day
     if day in MENUS:
         m=MENUS[day]; e='\n'.join(f'{i+1}. {x}' for i,x in enumerate(m['entradas'])); s='\n'.join(f'{i+1}. {x}' for i,x in enumerate(m['segundos']))
-        p=f'Precio: {MENU_PRICE}' if MENU_PRICE else 'Precio: por confirmar.'
+        p=f'Precio del almuerzo: {money(MENU_PRICE)}'
         return f"🍽️ *MENÚ DEL {m['dia'].upper()}*\n\n*Entradas*\n{e}\n\n*Segundos*\n{s}\n\n💰 {p}\n\nPara ordenar, responde *2*."
     if day==5:
         p=SATURDAY_GRILL_PRICE or 'por confirmar'
@@ -98,11 +112,14 @@ def reply(phone,text,force_day=None):
         if t not in {'1','2'}: return 'Responde *1* para recojo o *2* para delivery.'
         data['modo']='Recojo' if t=='1' else 'Delivery'; setsess(phone,'hora',data); return '🕐 ¿A qué hora aproximadamente deseas tu pedido? Ejemplo: 1:15 p. m.'
     if state=='hora':
-        data['hora']=raw; setsess(phone,'confirmar',data); price=MENU_PRICE or 'por confirmar'; delivery=(DELIVERY_FEE or 'por confirmar') if data['modo']=='Delivery' else 'No aplica'
-        return f"🧾 *RESUMEN DEL PEDIDO*\n\nEntrada: {data['entrada']}\nSegundo: {data['segundo']}\nModalidad: {data['modo']}\nHora: {data['hora']}\nMenú: {price}\nDelivery: {delivery}\n\n1️⃣ Sí, confirmar\n2️⃣ No, cancelar"
+        data['hora']=raw
+        setsess(phone,'confirmar',data)
+        delivery_value = money(DELIVERY_FEE) if data['modo']=='Delivery' else 'S/ 0.00'
+        total = total_amount(data['modo'])
+        return f"🧾 *RESUMEN DEL PEDIDO*\n\nEntrada: {data['entrada']}\nSegundo: {data['segundo']}\nModalidad: {data['modo']}\nHora: {data['hora']}\n\n💵 Precio: {money(MENU_PRICE)}\n🚚 Delivery: {delivery_value}\n💰 *Total: {total}*\n\n1️⃣ Sí, confirmar\n2️⃣ No, cancelar"
     if state=='confirmar':
         if t=='1':
-            oid=new_order(phone,data); setsess(phone,'main',{}); return f'✅ *Pedido #{oid} recibido*\nTu pedido quedó pendiente de confirmación de disponibilidad, precio final y hora.\n\nGracias por elegir Punto Verde Express 🌿\nEscribe *0* para volver.'
+            oid=new_order(phone,data); setsess(phone,'main',{}); return f'✅ *Pedido #{oid} recibido*\nTu pedido quedó pendiente de confirmación de disponibilidad y hora.\n\nGracias por elegir Punto Verde Express 🌿\nEscribe *0* para volver.'
         if t=='2': setsess(phone,'main',{}); return 'Pedido cancelado.\n\n'+MAIN
         return 'Responde *1* para confirmar o *2* para cancelar.'
     if state=='parrilla':
