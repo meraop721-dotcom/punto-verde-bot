@@ -192,6 +192,7 @@ body{
 }
 .chat{
   flex:1;
+  min-height:0;
   overflow:auto;
   padding:16px 13px 18px;
   background-color:#eef3f0;
@@ -237,13 +238,17 @@ body{
 }
 .composer{
   display:flex;align-items:center;gap:8px;padding:10px;
-  background:#fff;border-top:1px solid var(--line);padding-bottom:max(10px,env(safe-area-inset-bottom))
+  background:#fff;border-top:1px solid var(--line);
+  padding-bottom:max(10px,env(safe-area-inset-bottom));
+  position:relative;z-index:10;flex:0 0 auto
 }
 .textwrap{
   flex:1;display:flex;align-items:center;background:#f3f6f5;border:1px solid #e2ebe6;border-radius:22px;padding:0 5px 0 12px
 }
-.textwrap input{
-  flex:1;border:0;outline:0;background:transparent;padding:11px 5px;font-size:14px;min-width:0;color:#1e352d
+.textwrap input[type=text]{
+  flex:1;border:0;outline:0;background:transparent;padding:12px 5px;
+  font-size:16px;min-width:0;color:#1e352d;display:block;
+  -webkit-user-select:text;user-select:text;touch-action:manipulation
 }
 .camera{
   width:38px;height:38px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
@@ -302,7 +307,7 @@ body{
       <button onclick="quick('5')">👤 Ayuda</button>
     </section>
 
-    <footer class="composer">
+    <footer class="composer" id="composer">
       <div class="textwrap">
         <label class="camera" for="f" title="Enviar comprobante">📷</label>
         <input id="f" type="file" accept="image/*" onchange="img()">
@@ -324,9 +329,12 @@ function esc(t){
 }
 function fmt(t){
   let x=esc(t);
-  x=x.replace(/\*(.*?)\*/g,'<strong>$1</strong>');
-  x=x.replace(/\n/g,'<br>');
-  return x
+  const parts=x.split('*');
+  let out='';
+  for(let n=0;n<parts.length;n++){
+    out += (n%2===1 ? '<strong>'+parts[n]+'</strong>' : parts[n]);
+  }
+  return out.split(String.fromCharCode(10)).join('<br>');
 }
 function now(){
   return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
@@ -407,7 +415,12 @@ async function resetChat(){
   const j=await r.json();
   setTimeout(()=>{showTyping(false);add(j.reply,'bot')},300)
 }
-i.onkeydown=e=>{if(e.key==='Enter')s()};
+document.querySelector('.textwrap').addEventListener('click',function(e){
+  if(e.target!==f){ i.focus(); }
+});
+i.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){ e.preventDefault(); s(); }
+});
 resetChat();
 </script>
 </body>
