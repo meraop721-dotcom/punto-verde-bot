@@ -13,8 +13,10 @@ PHONE_NUMBER_ID=os.getenv('WHATSAPP_PHONE_NUMBER_ID','')
 GRAPH_API_VERSION=os.getenv('GRAPH_API_VERSION','')
 APP_SECRET=os.getenv('META_APP_SECRET','')
 MENU_PRICE=os.getenv('MENU_PRICE','12.00').strip()
-DELIVERY_FEE=os.getenv('DELIVERY_FEE','3.00').strip()
+DELIVERY_FEE_GUADALUPE=os.getenv('DELIVERY_FEE_GUADALUPE','3.00').strip()
+DELIVERY_FEE_CHEPEN=os.getenv('DELIVERY_FEE_CHEPEN','5.00').strip()
 SATURDAY_GRILL_PRICE=os.getenv('SATURDAY_GRILL_PRICE','').strip()
+ADMIN_KEY=os.getenv('ADMIN_KEY','puntoverde123').strip()
 DB_PATH=os.getenv('DB_PATH','punto_verde.db')
 TZ=ZoneInfo('America/Lima')
 
@@ -32,10 +34,17 @@ def money(value):
     except Exception:
         return f"S/ {value}" if value else 'por confirmar'
 
-def total_amount(mode):
+def delivery_fee(zone):
+    if zone == 'Guadalupe':
+        return DELIVERY_FEE_GUADALUPE
+    if zone == 'Chepén':
+        return DELIVERY_FEE_CHEPEN
+    return '0.00'
+
+def total_amount(mode, zone=None):
     try:
         base=float(MENU_PRICE)
-        delivery=float(DELIVERY_FEE) if mode=='Delivery' else 0.0
+        delivery=float(delivery_fee(zone)) if mode=='Delivery' else 0.0
         return money(base+delivery)
     except Exception:
         return 'por confirmar'
@@ -49,7 +58,12 @@ def db():
     conn=sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS sessions(phone TEXT PRIMARY KEY,state TEXT,data TEXT)')
     conn.execute('CREATE TABLE IF NOT EXISTS orders(id INTEGER PRIMARY KEY AUTOINCREMENT,phone TEXT,details TEXT,status TEXT,created_at TEXT)')
-    conn.commit(); return conn
+    cols=[r[1] for r in conn.execute('PRAGMA table_info(orders)').fetchall()]
+    if 'updated_at' not in cols:
+        conn.execute('ALTER TABLE orders ADD COLUMN updated_at TEXT')
+        conn.execute('UPDATE orders SET updated_at=created_at WHERE updated_at IS NULL')
+    conn.commit()
+    return conn
 
 def sess(phone):
     with db() as c:
@@ -62,12 +76,83 @@ def setsess(phone,state,data=None):
         c.commit()
 
 def new_order(phone,details):
+    now=datetime.now(TZ).isoformat()
     with db() as c:
-        q=c.execute('INSERT INTO orders(phone,details,status,created_at) VALUES(?,?,?,?)',(phone,json.dumps(details,ensure_ascii=False),'Recibido - pendiente de confirmación',datetime.now(TZ).isoformat()))
-        c.commit(); return q.lastrowid
+        q=c.execute(
+            'INSERT INTO orders(phone,details,status,created_at,updated_at) VALUES(?,?,?,?,?)',
+            (phone,json.dumps(details,ensure_ascii=False),'Pedido recibido',now,now)
+        )
+        c.commit()
+        return q.lastrowid
 
 def last_order(phone):
-    with db() as c:return c.execute('SELECT id,status FROM orders WHERE phone=? ORDER BY id DESC LIMIT 1',(phone,)).fetchone()
+    with db() as c:
+        return c.execute(
+            'SELECT id,status,details,created_at,updated_at FROM orders WHERE phone=? ORDER BY id DESC LIMIT 1',
+            (phone,)
+        ).fetchone()
+
+def get_order(order_id, phone=None):
+    with db() as c:
+        if phone:
+            return c.execute(
+                'SELECT id,phone,details,status,created_at,updated_at FROM orders WHERE id=? AND phone=?',
+                (order_id,phone)
+            ).fetchone()
+        return c.execute(
+            'SELECT id,phone,details,status,created_at,updated_at FROM orders WHERE id=?',
+            (order_id,)
+        ).fetchone()
+
+def update_order_status(order_id,status):
+    with db() as c:
+        c.execute(
+            'UPDATE orders SET status=?,updated_at=? WHERE id=?',
+            (status,datetime.now(TZ).isoformat(),order_id)
+        )
+        c.commit()
+
+TRACK_STEPS=[
+    ('Pedido recibido','🧾'),
+    ('Confirmado','✅'),
+    ('En preparación','👨‍🍳'),
+    ('Listo para recojo','🥡'),
+    ('En camino','🛵'),
+    ('Entregado','🏁'),
+]
+
+def tracking_text(order):
+    oid,phone,details_json,status,created_at,updated_at=order
+    try:
+        details=json.loads(details_json or '{}')
+    except Exception:
+        details={}
+    names=[x[0] for x in TRACK_STEPS]
+    idx=names.index(status) if status in names else -1
+    lines=[]
+    for i,(name,icon) in enumerate(TRACK_STEPS):
+        if status=='Cancelado':
+            mark='○'
+        elif i < idx:
+            mark='✅'
+        elif i == idx:
+            mark='➡️'
+        else:
+            mark='○'
+        lines.append(f'{mark} {icon} {name}')
+    if status=='Cancelado':
+        lines.append('❌ Pedido cancelado')
+    if details.get('modo')=='Delivery':
+        extra=f"\n📍 {details.get('zona','')} — {details.get('direccion','')}"
+    else:
+        extra='\n📍 Modalidad: Recojo'
+    return (
+        f"📦 *SEGUIMIENTO DEL PEDIDO #{oid}*\n\n"
+        + "\n".join(lines)
+        + f"\n\nEstado actual: *{status}*"
+        + extra
+        + "\n\nEscribe *0* para volver al menú."
+    )
 
 def menu_text(day=None):
     day=datetime.now(TZ).weekday() if day is None else day
@@ -96,10 +181,23 @@ def reply(phone,text,force_day=None):
             return 'Hoy no hay atención programada. Escribe *0* para volver.'
         if t=='3': return menu_text(5)
         if t=='4':
-            o=last_order(phone); return f'📦 Pedido #{o[0]}\nEstado: *{o[1]}*\n\nEscribe *0* para volver.' if o else '📦 Aún no tienes pedidos registrados. Escribe *0* para volver.'
+            o=last_order(phone)
+            if not o:
+                return '📦 Aún no tienes pedidos registrados. Escribe *0* para volver.'
+            setsess(phone,'track_order',{})
+            return f'📦 Tu último pedido es el *#{o[0]}*.\n\nEscribe el número de pedido que deseas consultar.\nEjemplo: *{o[0]}*'
         if t=='5': return '👤 Un integrante del equipo continuará la conversación cuando sea necesario. Escribe *0* para volver.'
         if t=='reservar': setsess(phone,'parrilla',{}); return '🔥 Escribe tu nombre y la hora aproximada para la reserva. Ejemplo: Carlos, 1:30 p. m.'
         return 'No pude reconocer esa opción.\n\n'+MAIN
+    if state=='track_order':
+        if not t.isdigit():
+            return 'Escribe solo el número de pedido. Ejemplo: *1*.'
+        order=get_order(int(t),phone)
+        if not order:
+            return 'No encontré ese pedido asociado a este número. Intenta nuevamente o escribe *0* para volver.'
+        setsess(phone,'main',{})
+        return tracking_text(order)
+
     if state=='entrada':
         if t not in {'1','2','3'}: return 'Responde solo *1, 2 o 3* para elegir la entrada.'
         m=MENUS[data['day']]; data['entrada']=m['entradas'][int(t)-1]; setsess(phone,'segundo',data); opts='\n'.join(f'{i+1}. {x}' for i,x in enumerate(m['segundos']))
@@ -109,17 +207,63 @@ def reply(phone,text,force_day=None):
         m=MENUS[data['day']]; data['segundo']=m['segundos'][int(t)-1]; setsess(phone,'modo',data)
         return f"✅ Segundo: *{data['segundo']}*\n\n¿Cómo deseas recibirlo?\n1️⃣ Recojo\n2️⃣ Delivery"
     if state=='modo':
-        if t not in {'1','2'}: return 'Responde *1* para recojo o *2* para delivery.'
-        data['modo']='Recojo' if t=='1' else 'Delivery'; setsess(phone,'hora',data); return '🕐 ¿A qué hora aproximadamente deseas tu pedido? Ejemplo: 1:15 p. m.'
+        if t not in {'1','2'}:
+            return 'Responde *1* para recojo o *2* para delivery.'
+        data['modo']='Recojo' if t=='1' else 'Delivery'
+        if data['modo']=='Delivery':
+            setsess(phone,'zona_delivery',data)
+            return (
+                '📍 ¿A qué zona será el delivery?\n\n'
+                f'1️⃣ Guadalupe — {money(DELIVERY_FEE_GUADALUPE)}\n'
+                f'2️⃣ Chepén — {money(DELIVERY_FEE_CHEPEN)}\n\n'
+                'Responde 1 o 2.'
+            )
+        setsess(phone,'hora',data)
+        return '🕐 ¿A qué hora aproximadamente deseas recoger tu pedido? Ejemplo: 1:15 p. m.'
+
+    if state=='zona_delivery':
+        if t not in {'1','2'}:
+            return 'Responde *1* para Guadalupe o *2* para Chepén.'
+        data['zona']='Guadalupe' if t=='1' else 'Chepén'
+        setsess(phone,'direccion_delivery',data)
+        return (
+            f'📌 Delivery para *{data["zona"]}*.\n'
+            'Escribe la dirección exacta y una referencia breve.\n\n'
+            'Ejemplo: Jr. Lima 245, frente a la farmacia.'
+        )
+
+    if state=='direccion_delivery':
+        if len(raw) < 5:
+            return 'Por favor escribe una dirección un poco más completa y, si puedes, una referencia.'
+        data['direccion']=raw
+        setsess(phone,'hora',data)
+        return '🕐 ¿A qué hora aproximadamente deseas recibir tu pedido? Ejemplo: 1:15 p. m.'
+
     if state=='hora':
         data['hora']=raw
         setsess(phone,'confirmar',data)
-        delivery_value = money(DELIVERY_FEE) if data['modo']=='Delivery' else 'S/ 0.00'
-        total = total_amount(data['modo'])
-        return f"🧾 *RESUMEN DEL PEDIDO*\n\nEntrada: {data['entrada']}\nSegundo: {data['segundo']}\nModalidad: {data['modo']}\nHora: {data['hora']}\n\n💵 Precio: {money(MENU_PRICE)}\n🚚 Delivery: {delivery_value}\n💰 *Total: {total}*\n\n1️⃣ Sí, confirmar\n2️⃣ No, cancelar"
+        zone = data.get('zona')
+        delivery_value = money(delivery_fee(zone)) if data['modo']=='Delivery' else 'S/ 0.00'
+        total = total_amount(data['modo'], zone)
+        extra = ''
+        if data['modo']=='Delivery':
+            extra = f"\nZona: {data.get('zona','')}\nDirección: {data.get('direccion','')}"
+        return (
+            f"🧾 *RESUMEN DEL PEDIDO*\n\n"
+            f"Entrada: {data['entrada']}\n"
+            f"Segundo: {data['segundo']}\n"
+            f"Modalidad: {data['modo']}"
+            f"{extra}\n"
+            f"Hora: {data['hora']}\n\n"
+            f"💵 Precio: {money(MENU_PRICE)}\n"
+            f"🚚 Delivery: {delivery_value}\n"
+            f"💰 *TOTAL: {total}*\n\n"
+            "1️⃣ Sí, confirmar\n"
+            "2️⃣ No, cancelar"
+        )
     if state=='confirmar':
         if t=='1':
-            oid=new_order(phone,data); setsess(phone,'main',{}); return f'✅ *Pedido #{oid} recibido*\nTu pedido quedó pendiente de confirmación de disponibilidad y hora.\n\nGracias por elegir Punto Verde Express 🌿\nEscribe *0* para volver.'
+            oid=new_order(phone,data); setsess(phone,'main',{}); return f'✅ *Pedido #{oid} recibido*\nTu pedido quedó registrado.\n\n📦 Para seguirlo, vuelve al menú y elige *4. Estado de mi pedido*.\n\nGracias por elegir Punto Verde Express 🌿\nEscribe *0* para volver.'
         if t=='2': setsess(phone,'main',{}); return 'Pedido cancelado.\n\n'+MAIN
         return 'Responde *1* para confirmar o *2* para cancelar.'
     if state=='parrilla':
@@ -169,6 +313,81 @@ def webhook():
             send_text(sender,reply(sender,incoming))
     except Exception as e: app.logger.exception(e)
     return Response('EVENT_RECEIVED',200)
+@app.get('/admin')
+def admin_panel():
+    if request.args.get('key') != ADMIN_KEY:
+        return Response('Acceso no autorizado',403)
+    with db() as c:
+        rows=c.execute(
+            'SELECT id,phone,details,status,created_at,updated_at FROM orders ORDER BY id DESC LIMIT 50'
+        ).fetchall()
+
+    allowed=['Pedido recibido','Confirmado','En preparación','Listo para recojo','En camino','Entregado','Cancelado']
+    cards=[]
+    for oid,phone,details_json,status,created_at,updated_at in rows:
+        try:
+            d=json.loads(details_json or '{}')
+        except Exception:
+            d={}
+        if d.get('entrada') or d.get('segundo'):
+            pedido=f"{d.get('entrada','')} + {d.get('segundo','')}"
+        else:
+            pedido=d.get('tipo','Pedido')
+        if d.get('modo')=='Delivery':
+            modalidad=f"{d.get('zona','')} — {d.get('direccion','')}"
+        else:
+            modalidad=d.get('modo','Recojo')
+        opts=''.join(
+            '<option value="'+s+'"'+(' selected' if s==status else '')+'>'+s+'</option>'
+            for s in allowed
+        )
+        card=(
+            '<div class="card">'
+            f'<h3>Pedido #{oid}</h3>'
+            f'<div><b>Pedido:</b> {pedido}</div>'
+            f'<div><b>Modalidad:</b> {modalidad}</div>'
+            f'<div><b>Estado:</b> {status}</div>'
+            f'<form method="post" action="/admin/order/{oid}?key={ADMIN_KEY}">'
+            f'<select name="status">{opts}</select>'
+            '<button type="submit">Actualizar estado</button>'
+            '</form></div>'
+        )
+        cards.append(card)
+
+    html=(
+        '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<title>Panel Punto Verde</title>'
+        '<style>'
+        'body{font-family:Arial;background:#f3f5f4;margin:0;padding:18px}'
+        '.wrap{max-width:720px;margin:auto}'
+        'h1{color:#075e54}'
+        '.card{background:white;padding:16px;margin:12px 0;border-radius:14px;box-shadow:0 2px 12px #ddd}'
+        'select,button{padding:10px;margin-top:10px;border-radius:9px}'
+        'button{background:#00a884;color:white;border:0}'
+        '</style>'
+        '<div class="wrap">'
+        '<h1>🌿 Punto Verde Express — Pedidos</h1>'
+        '<p>Desde aquí puedes cambiar el estado. El cliente lo verá en la opción 4.</p>'
+        + (''.join(cards) if cards else '<p>No hay pedidos todavía.</p>')
+        + '</div>'
+    )
+    return html
+
+@app.post('/admin/order/<int:order_id>')
+def admin_update_order(order_id):
+    if request.args.get('key') != ADMIN_KEY:
+        return Response('Acceso no autorizado',403)
+    allowed=['Pedido recibido','Confirmado','En preparación','Listo para recojo','En camino','Entregado','Cancelado']
+    status=request.form.get('status','')
+    if status not in allowed:
+        return Response('Estado inválido',400)
+    update_order_status(order_id,status)
+    return Response(
+        '<meta http-equiv="refresh" content="0;url=/admin?key='+ADMIN_KEY+'">',
+        200,
+        mimetype='text/html'
+    )
+
 @app.get('/health')
 def health(): return jsonify({'status':'ok'})
 
