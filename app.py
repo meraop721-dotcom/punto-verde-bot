@@ -106,52 +106,312 @@ MAIN=("🌿 *PUNTO VERDE EXPRESS* 🌿\nMenús & Parrillas\n\n¡Hola! 👋 ¿Qu�
       "1️⃣ Ver menú de hoy\n2️⃣ Hacer un pedido\n3️⃣ Parrillas del sábado\n4️⃣ Estado de mi pedido\n5️⃣ Hablar con una persona\n\nResponde con el número de una opción.")
 
 DEMO='''<!doctype html>
+<html lang="es">
+<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Punto Verde Express</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#075e54">
+<title>Punto Verde Express · Demo</title>
 <style>
-body{font-family:Arial;background:#efeae2;margin:0}
-.w{max-width:430px;height:760px;margin:18px auto;background:white;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;box-shadow:0 5px 25px #999}
-.h{background:#075e54;color:white;padding:16px;font-weight:bold}
-.c{flex:1;padding:14px;overflow:auto;background:#efeae2}
-.m{white-space:pre-wrap;padding:9px 11px;border-radius:10px;margin:7px 0;max-width:82%;background:white}
-.me{margin-left:auto;background:#d9fdd3}
-.b{display:flex;gap:8px;padding:10px;background:#f0f2f5;align-items:center}
-.b input[type=text]{flex:1;border:0;border-radius:20px;padding:12px;min-width:0}
-.b button,.photo{border:0;border-radius:20px;background:#00a884;color:white;padding:11px 14px;cursor:pointer}
-.photo{background:#54656f}
-#f{display:none}
-</style>
-<div class="w">
-  <div class="h">Punto Verde Express<br><small>Prototipo del bot</small></div>
-  <div id="c" class="c"></div>
-  <div class="b">
-    <label class="photo" for="f">📷</label>
-    <input id="f" type="file" accept="image/*" onchange="img()">
-    <input id="i" type="text" placeholder="Escribe 1, 2, 3...">
-    <button onclick="s()">Enviar</button>
-  </div>
-</div>
-<script>
-const c=document.getElementById('c'),i=document.getElementById('i'),f=document.getElementById('f');
-function a(t,k){let d=document.createElement('div');d.className='m '+k;d.textContent=t;c.appendChild(d);c.scrollTop=c.scrollHeight}
-async function s(){
-  let t=i.value.trim(); if(!t)return;
-  a(t,'me'); i.value='';
-  let r=await fetch('/demo-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
-  let j=await r.json(); a(j.reply,'')
+:root{
+  --green:#075e54;
+  --green2:#0b7d66;
+  --accent:#16a36f;
+  --lime:#dff6e8;
+  --paper:#ffffff;
+  --bg:#eef5f1;
+  --ink:#173129;
+  --muted:#6f817a;
+  --line:#dce8e1;
+  --orange:#f59e0b;
 }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 10% 10%,#dff3e9 0,transparent 26%),
+    radial-gradient(circle at 90% 85%,#fdeed5 0,transparent 24%),
+    #edf3f0;
+}
+.shell{
+  min-height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.phone{
+  width:min(100%,460px);
+  height:min(850px,calc(100vh - 40px));
+  background:#fff;
+  border-radius:28px;
+  overflow:hidden;
+  box-shadow:0 22px 70px rgba(18,60,47,.22);
+  display:flex;
+  flex-direction:column;
+  border:1px solid rgba(255,255,255,.8);
+}
+.top{
+  background:linear-gradient(135deg,#064e45,#08745f);
+  color:#fff;
+  padding:15px 16px 13px;
+  box-shadow:0 4px 18px rgba(0,0,0,.13);
+  position:relative;
+  z-index:3;
+}
+.brandrow{display:flex;align-items:center;gap:12px}
+.logo{
+  width:48px;height:48px;border-radius:50%;
+  background:#fff;
+  display:grid;place-items:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.15);
+  flex:0 0 auto;
+}
+.logo svg{width:31px;height:31px}
+.brand{min-width:0;flex:1}
+.brand h1{font-size:17px;line-height:1.1;margin:0;font-weight:800;letter-spacing:.1px}
+.sub{display:flex;align-items:center;gap:6px;font-size:12px;opacity:.9;margin-top:5px}
+.dot{width:7px;height:7px;background:#9ff2c5;border-radius:50%;box-shadow:0 0 0 3px rgba(159,242,197,.14)}
+.reset{
+  border:1px solid rgba(255,255,255,.24);
+  color:#fff;background:rgba(255,255,255,.11);
+  border-radius:12px;padding:9px 11px;font-size:12px;font-weight:700;cursor:pointer
+}
+.info{
+  display:flex;gap:8px;overflow:auto;
+  padding:9px 12px;background:#fff;border-bottom:1px solid var(--line);
+  scrollbar-width:none
+}
+.info::-webkit-scrollbar{display:none}
+.chip{
+  white-space:nowrap;border:1px solid #dbeae3;background:#f7fbf9;color:#33584c;
+  border-radius:999px;padding:7px 10px;font-size:11px;font-weight:700
+}
+.chat{
+  flex:1;
+  overflow:auto;
+  padding:16px 13px 18px;
+  background-color:#eef3f0;
+  background-image:radial-gradient(#d7e5de 1px,transparent 1px);
+  background-size:18px 18px;
+  scroll-behavior:smooth;
+}
+.msgrow{display:flex;align-items:flex-end;gap:7px;margin:9px 0}
+.msgrow.me{justify-content:flex-end}
+.botavatar{
+  width:27px;height:27px;border-radius:50%;background:#fff;border:1px solid #d8e5df;
+  display:grid;place-items:center;font-size:14px;box-shadow:0 2px 7px rgba(0,0,0,.08);flex:0 0 auto
+}
+.bubble{
+  max-width:82%;
+  background:#fff;
+  border-radius:15px 15px 15px 5px;
+  padding:10px 12px 7px;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+  font-size:14px;line-height:1.43;
+  word-break:break-word;
+}
+.me .bubble{
+  background:#d9fdd3;
+  border-radius:15px 15px 5px 15px
+}
+.meta{margin-top:5px;color:#80918a;font-size:9.5px;text-align:right}
+.typing{
+  display:none;align-items:center;gap:5px;background:#fff;border-radius:14px 14px 14px 5px;
+  padding:11px 13px;width:max-content;box-shadow:0 1px 2px rgba(0,0,0,.08);margin:8px 0 8px 34px
+}
+.typing span{width:6px;height:6px;border-radius:50%;background:#8aa198;animation:b 1.1s infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,70%,100%{transform:translateY(0);opacity:.4}35%{transform:translateY(-4px);opacity:1}}
+.quick{
+  display:flex;gap:7px;overflow:auto;padding:9px 10px;background:#f8fbf9;border-top:1px solid var(--line);
+  scrollbar-width:none
+}
+.quick::-webkit-scrollbar{display:none}
+.quick button{
+  white-space:nowrap;border:1px solid #cfe3d9;background:#fff;color:#17634f;border-radius:999px;
+  padding:8px 11px;font-size:12px;font-weight:800;cursor:pointer
+}
+.composer{
+  display:flex;align-items:center;gap:8px;padding:10px;
+  background:#fff;border-top:1px solid var(--line);padding-bottom:max(10px,env(safe-area-inset-bottom))
+}
+.textwrap{
+  flex:1;display:flex;align-items:center;background:#f3f6f5;border:1px solid #e2ebe6;border-radius:22px;padding:0 5px 0 12px
+}
+.textwrap input{
+  flex:1;border:0;outline:0;background:transparent;padding:11px 5px;font-size:14px;min-width:0;color:#1e352d
+}
+.camera{
+  width:38px;height:38px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  color:#49665c;font-size:17px
+}
+#f{display:none}
+.send{
+  width:42px;height:42px;border-radius:50%;border:0;background:linear-gradient(135deg,#15a06c,#08745f);
+  color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 5px 13px rgba(8,116,95,.24);font-size:17px
+}
+.badge{
+  position:absolute;right:15px;bottom:-10px;background:#fff;color:#0b6d59;padding:5px 9px;border-radius:999px;
+  font-size:10px;font-weight:800;box-shadow:0 3px 11px rgba(0,0,0,.12)
+}
+@media(max-width:520px){
+  .shell{padding:0}
+  .phone{width:100%;height:100vh;border-radius:0}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <main class="phone">
+    <header class="top">
+      <div class="brandrow">
+        <div class="logo" aria-label="Logo Punto Verde Express">
+          <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+            <path d="M32 54C20 48 13 39 13 28c0-8 5-15 13-18 2 8 6 13 12 17-2-8 0-15 7-21 6 5 9 12 8 20-1 15-10 24-21 28Z" fill="#13a16d"/>
+            <path d="M30 49c1-12 6-22 16-30" fill="none" stroke="#075e54" stroke-width="4" stroke-linecap="round"/>
+            <path d="M25 37c7 0 12 2 16 7" fill="none" stroke="#f3a712" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand">
+          <h1>Punto Verde Express</h1>
+          <div class="sub"><span class="dot"></span> Prototipo funcional · En línea</div>
+        </div>
+        <button class="reset" onclick="resetChat()">↻ Reiniciar</button>
+      </div>
+      <div class="badge">Menús & Parrillas</div>
+    </header>
+
+    <section class="info">
+      <span class="chip">🍽️ Menú S/ 12</span>
+      <span class="chip">🛵 Delivery Guadalupe / Chepén</span>
+      <span class="chip">💳 Yape o efectivo</span>
+      <span class="chip">📦 Seguimiento</span>
+    </section>
+
+    <section id="c" class="chat" aria-live="polite"></section>
+    <div id="typing" class="typing"><span></span><span></span><span></span></div>
+
+    <section class="quick">
+      <button onclick="quick('1')">🍽️ Ver menú</button>
+      <button onclick="quick('2')">🛒 Hacer pedido</button>
+      <button onclick="quick('4')">📦 Mi pedido</button>
+      <button onclick="quick('5')">👤 Ayuda</button>
+    </section>
+
+    <footer class="composer">
+      <div class="textwrap">
+        <label class="camera" for="f" title="Enviar comprobante">📷</label>
+        <input id="f" type="file" accept="image/*" onchange="img()">
+        <input id="i" type="text" autocomplete="off" placeholder="Escribe un mensaje...">
+      </div>
+      <button class="send" onclick="s()" title="Enviar">➤</button>
+    </footer>
+  </main>
+</div>
+
+<script>
+const c=document.getElementById('c');
+const i=document.getElementById('i');
+const f=document.getElementById('f');
+const typing=document.getElementById('typing');
+
+function esc(t){
+  return String(t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))
+}
+function fmt(t){
+  let x=esc(t);
+  x=x.replace(/\*(.*?)\*/g,'<strong>$1</strong>');
+  x=x.replace(/\n/g,'<br>');
+  return x
+}
+function now(){
+  return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
+}
+function add(t,who){
+  const row=document.createElement('div');
+  row.className='msgrow'+(who==='me'?' me':'');
+  if(who!=='me'){
+    const av=document.createElement('div');
+    av.className='botavatar';
+    av.textContent='🌿';
+    row.appendChild(av);
+  }
+  const b=document.createElement('div');
+  b.className='bubble';
+  b.innerHTML=fmt(t)+'<div class="meta">'+now()+(who==='me'?' ✓✓':'')+'</div>';
+  row.appendChild(b);
+  c.appendChild(row);
+  c.scrollTop=c.scrollHeight
+}
+function showTyping(v){
+  typing.style.display=v?'flex':'none';
+  if(v) c.scrollTop=c.scrollHeight
+}
+async function sendText(t){
+  t=String(t||'').trim();
+  if(!t)return;
+  add(t,'me');
+  showTyping(true);
+  try{
+    const r=await fetch('/demo-message',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:t})
+    });
+    const j=await r.json();
+    await new Promise(r=>setTimeout(r,350));
+    showTyping(false);
+    add(j.reply,'bot')
+  }catch(e){
+    showTyping(false);
+    add('No pude responder en este momento. Intenta nuevamente.','bot')
+  }
+}
+async function s(){
+  const t=i.value;
+  i.value='';
+  await sendText(t);
+  i.focus()
+}
+function quick(v){sendText(v)}
 async function img(){
   if(!f.files.length)return;
-  a('📷 Comprobante de Yape enviado','me');
-  let fd=new FormData(); fd.append('image',f.files[0]);
-  let r=await fetch('/demo-image',{method:'POST',body:fd});
-  let j=await r.json(); a(j.reply,''); f.value=''
+  add('📷 Comprobante de Yape enviado','me');
+  showTyping(true);
+  const fd=new FormData();
+  fd.append('image',f.files[0]);
+  try{
+    const r=await fetch('/demo-image',{method:'POST',body:fd});
+    const j=await r.json();
+    await new Promise(r=>setTimeout(r,450));
+    showTyping(false);
+    add(j.reply,'bot')
+  }catch(e){
+    showTyping(false);
+    add('No pude cargar la imagen. Intenta otra vez.','bot')
+  }
+  f.value=''
+}
+async function resetChat(){
+  c.innerHTML='';
+  showTyping(true);
+  const r=await fetch('/demo-message',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text:'hola',reset:true})
+  });
+  const j=await r.json();
+  setTimeout(()=>{showTyping(false);add(j.reply,'bot')},300)
 }
 i.onkeydown=e=>{if(e.key==='Enter')s()};
-fetch('/demo-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'hola',reset:true})})
-.then(r=>r.json()).then(j=>a(j.reply,''));
-</script>'''
+resetChat();
+</script>
+</body>
+</html>'''
 
 def db():
     conn=sqlite3.connect(DB_PATH)
@@ -654,58 +914,325 @@ def admin_panel():
 
     q=(request.args.get('q') or '').strip().lower()
     with db() as c:
-        rows=c.execute('SELECT id,phone,details,status,created_at,updated_at FROM orders ORDER BY id DESC LIMIT 150').fetchall()
+        rows=c.execute(
+            'SELECT id,phone,details,status,created_at,updated_at FROM orders ORDER BY id DESC LIMIT 150'
+        ).fetchall()
 
     total=len(rows)
     nuevos=sum(1 for r in rows if r[3]=='Pedido recibido')
+    en_ruta=sum(1 for r in rows if r[3]=='En camino')
+    entregados=sum(1 for r in rows if r[3]=='Entregado')
     yapes=0
     cards=[]
+
     allowed=['Pedido recibido','Confirmado','En preparación','Listo para recojo','En camino','Entregado','Cancelado']
     pay_allowed=['Pendiente de verificación','Pago verificado','Pago rechazado','Pago al entregar','Pagado']
+
+    def status_class(value):
+        return {
+            'Pedido recibido':'st-new',
+            'Confirmado':'st-ok',
+            'En preparación':'st-prep',
+            'Listo para recojo':'st-ready',
+            'En camino':'st-route',
+            'Entregado':'st-done',
+            'Cancelado':'st-cancel'
+        }.get(value,'st-new')
+
+    def pay_class(value):
+        return {
+            'Pendiente de verificación':'pay-wait',
+            'Pago verificado':'pay-ok',
+            'Pago rechazado':'pay-bad',
+            'Pago al entregar':'pay-cash',
+            'Pagado':'pay-ok'
+        }.get(value,'pay-wait')
+
+    def pretty_time(value):
+        if not value:
+            return 'Sin fecha'
+        try:
+            dt=datetime.fromisoformat(value)
+            return dt.astimezone(TZ).strftime('%d/%m/%Y · %I:%M %p')
+        except Exception:
+            return str(value)
 
     for oid,phone,details_json,status,created_at,updated_at in rows:
         try:
             d=json.loads(details_json or '{}')
         except Exception:
             d={}
+
         pay_status=order_payment_status(d)
         if d.get('pago')=='Yape' and pay_status=='Pendiente de verificación':
             yapes+=1
-        blob=' '.join([str(oid),str(phone),d.get('cliente',''),d.get('entrada',''),d.get('segundo',''),d.get('direccion',''),status,pay_status]).lower()
+
+        blob=' '.join([
+            str(oid),str(phone),d.get('cliente',''),d.get('entrada',''),
+            d.get('segundo',''),d.get('direccion',''),status,pay_status
+        ]).lower()
         if q and q not in blob:
             continue
 
         pedido=' + '.join(x for x in [d.get('entrada'),d.get('segundo')] if x) or d.get('tipo','Pedido')
-        entrega=(f"Delivery · {d.get('zona','')} · {d.get('direccion','')}" if d.get('modo')=='Delivery' else d.get('modo','Recojo'))
-        total_order=(total_amount(d.get('modo'),d.get('zona')) if d.get('entrada') else (SATURDAY_GRILL_PRICE or 'por confirmar'))
-        opts=''.join('<option value="'+html.escape(s)+'"'+(' selected' if s==status else '')+'>'+html.escape(s)+'</option>' for s in allowed)
-        popts=''.join('<option value="'+html.escape(s)+'"'+(' selected' if s==pay_status else '')+'>'+html.escape(s)+'</option>' for s in pay_allowed)
-        receipt=''
-        if d.get('pago')=='Yape' and d.get('comprobante_yape'):
-            receipt=f'<a class="receipt" target="_blank" href="/admin/order/{oid}/receipt?key={html.escape(ADMIN_KEY)}">📸 Ver comprobante</a>'
-        cls='card new' if status=='Pedido recibido' else 'card'
-        cards.append(
-            f'<div class="{cls}">'
-            f'<div class="head"><h3>Pedido #{oid}</h3><span>{html.escape(status)}</span></div>'
-            f'<div class="grid"><div><b>👤 Cliente</b><br>{html.escape(d.get("cliente","Sin nombre"))}</div>'
-            f'<div><b>🍽️ Pedido</b><br>{html.escape(pedido)}</div>'
-            f'<div><b>📍 Entrega</b><br>{html.escape(entrega)}</div>'
-            f'<div><b>💰 Total</b><br>{html.escape(str(total_order))}</div>'
-            f'<div><b>💳 Pago</b><br>{html.escape(d.get("pago","Sin registrar"))}</div>'
-            f'<div><b>🔎 Estado de pago</b><br>{html.escape(pay_status)}</div></div>'
-            f'{receipt}'
-            f'<form class="row" method="post" action="/admin/order/{oid}?key={html.escape(ADMIN_KEY)}"><select name="status">{opts}</select><button>Actualizar pedido</button></form>'
-            f'<form class="row" method="post" action="/admin/order/{oid}/payment?key={html.escape(ADMIN_KEY)}"><select name="payment_status">{popts}</select><button class="dark">Actualizar pago</button></form>'
-            '</div>'
+        if d.get('modo')=='Delivery':
+            entrega=f"{d.get('zona','')} · {d.get('direccion','')}"
+            delivery_badge='🛵 Delivery'
+        else:
+            entrega=d.get('modo','Recojo')
+            delivery_badge='🥡 Recojo'
+
+        total_order=(
+            total_amount(d.get('modo'),d.get('zona'))
+            if d.get('entrada')
+            else (SATURDAY_GRILL_PRICE or 'por confirmar')
         )
 
-    page=(
-        '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Panel Punto Verde</title>'
-        '<style>*{box-sizing:border-box}body{font-family:Arial;background:#f4f7f5;margin:0;color:#23322d}.w{max-width:900px;margin:auto;padding:16px}h1{color:#075e54}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat,.card,.search{background:white;border-radius:14px;padding:14px;box-shadow:0 2px 12px #dfe7e2}.stat b{display:block;font-size:26px;color:#075e54}.search{margin:12px 0;display:flex;gap:8px}.search input{flex:1}.card{margin:12px 0;border-left:5px solid #dbe5df}.card.new{border-left-color:#ff9800;background:#fffdf8}.head{display:flex;justify-content:space-between;align-items:center}.head h3{margin:0;color:#075e54}.head span{background:#eaf6f0;padding:6px 9px;border-radius:999px;font-size:12px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}.row{display:flex;gap:8px;margin-top:8px}.row select{flex:1}input,select,button{padding:11px;border:1px solid #ccd8d1;border-radius:9px}button{background:#00a884;color:white;border:0;font-weight:bold}.dark{background:#075e54}.receipt{display:inline-block;background:#54656f;color:white;text-decoration:none;padding:9px 12px;border-radius:9px}@media(max-width:650px){.stats,.grid{grid-template-columns:1fr}.row,.search{flex-direction:column}}</style>'
-        f'<div class="w"><h1>🌿 Punto Verde Express</h1><p>Panel de pedidos y verificación de pagos</p><div class="stats"><div class="stat"><b>{total}</b>Pedidos</div><div class="stat"><b>{nuevos}</b>Nuevos</div><div class="stat"><b>{yapes}</b>Yapes por verificar</div></div>'
-        f'<form class="search" method="get"><input type="hidden" name="key" value="{html.escape(ADMIN_KEY)}"><input name="q" value="{html.escape(q)}" placeholder="Buscar pedido, cliente o dirección"><button>Buscar</button></form>'
-        + (''.join(cards) if cards else '<div class="card">No se encontraron pedidos.</div>') + '</div>'
-    )
+        opts=''.join(
+            '<option value="'+html.escape(s)+'"'+(' selected' if s==status else '')+'>'+html.escape(s)+'</option>'
+            for s in allowed
+        )
+        popts=''.join(
+            '<option value="'+html.escape(s)+'"'+(' selected' if s==pay_status else '')+'>'+html.escape(s)+'</option>'
+            for s in pay_allowed
+        )
+
+        receipt=''
+        if d.get('pago')=='Yape' and d.get('comprobante_yape'):
+            receipt=(
+                f'<a class="receipt" target="_blank" '
+                f'href="/admin/order/{oid}/receipt?key={html.escape(ADMIN_KEY)}">'
+                '📸 Abrir comprobante</a>'
+            )
+
+        is_new=' new' if status=='Pedido recibido' else ''
+        payment_icon='📱' if d.get('pago')=='Yape' else '💵'
+        client=html.escape(d.get('cliente','Sin nombre'))
+        pedido_safe=html.escape(pedido)
+        entrega_safe=html.escape(entrega)
+        total_safe=html.escape(str(total_order))
+        metodo=html.escape(d.get('pago','Sin registrar'))
+        status_safe=html.escape(status)
+        pay_safe=html.escape(pay_status)
+        hora=html.escape(d.get('hora','Sin horario'))
+        updated=html.escape(pretty_time(updated_at or created_at))
+
+        cards.append(
+            f'''
+            <article class="order-card{is_new}">
+              <div class="order-top">
+                <div>
+                  <div class="order-id">Pedido #{oid}</div>
+                  <div class="order-time">Actualizado {updated}</div>
+                </div>
+                <div class="badges">
+                  <span class="pill {status_class(status)}">{status_safe}</span>
+                  <span class="pill {pay_class(pay_status)}">{pay_safe}</span>
+                </div>
+              </div>
+
+              <div class="order-main">
+                <section class="customer">
+                  <div class="avatar">{client[:1].upper() if client else "P"}</div>
+                  <div>
+                    <div class="eyebrow">CLIENTE</div>
+                    <strong>{client}</strong>
+                    <div class="muted">{delivery_badge} · {hora}</div>
+                  </div>
+                </section>
+
+                <section class="pricebox">
+                  <div class="eyebrow">TOTAL</div>
+                  <div class="price">{total_safe}</div>
+                </section>
+              </div>
+
+              <div class="detail-grid">
+                <div class="detail">
+                  <span>🍽️</span>
+                  <div><small>Pedido</small><b>{pedido_safe}</b></div>
+                </div>
+                <div class="detail">
+                  <span>📍</span>
+                  <div><small>Entrega</small><b>{entrega_safe}</b></div>
+                </div>
+                <div class="detail">
+                  <span>{payment_icon}</span>
+                  <div><small>Método de pago</small><b>{metodo}</b></div>
+                </div>
+                <div class="detail">
+                  <span>🧾</span>
+                  <div><small>Referencia</small><b>#{oid}</b></div>
+                </div>
+              </div>
+
+              <div class="card-actions">
+                {receipt}
+                <form method="post" action="/admin/order/{oid}?key={html.escape(ADMIN_KEY)}">
+                  <label>Estado del pedido</label>
+                  <div class="control">
+                    <select name="status">{opts}</select>
+                    <button class="btn primary">Actualizar</button>
+                  </div>
+                </form>
+
+                <form method="post" action="/admin/order/{oid}/payment?key={html.escape(ADMIN_KEY)}">
+                  <label>Estado del pago</label>
+                  <div class="control">
+                    <select name="payment_status">{popts}</select>
+                    <button class="btn dark">Guardar pago</button>
+                  </div>
+                </form>
+              </div>
+            </article>
+            '''
+        )
+
+    cards_html=''.join(cards) if cards else '''
+      <div class="empty">
+        <div class="empty-icon">🧾</div>
+        <h3>No se encontraron pedidos</h3>
+        <p>Prueba otro término de búsqueda o crea un pedido desde la demo.</p>
+      </div>
+    '''
+
+    page=f'''<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#075e54">
+<title>Panel · Punto Verde Express</title>
+<style>
+:root{{
+  --green:#075e54;--green2:#0d7b65;--accent:#16a36f;--bg:#f3f7f5;--paper:#fff;
+  --ink:#18342b;--muted:#74867f;--line:#dce8e1;--orange:#f59e0b;--red:#dc4c4c;
+}}
+*{{box-sizing:border-box}}
+body{{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}}
+a{{color:inherit}}
+.topbar{{
+  position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#064e45,#08745f);color:white;
+  box-shadow:0 8px 24px rgba(18,70,55,.16)
+}}
+.topinner{{max-width:1180px;margin:auto;padding:14px 20px;display:flex;align-items:center;gap:12px}}
+.brandmark{{width:42px;height:42px;background:#fff;border-radius:13px;display:grid;place-items:center;font-size:23px;box-shadow:0 4px 14px rgba(0,0,0,.13)}}
+.brandtext{{flex:1;min-width:0}}
+.brandtext b{{display:block;font-size:16px}}
+.brandtext span{{font-size:11px;opacity:.82}}
+.top-actions{{display:flex;gap:8px}}
+.top-actions a{{text-decoration:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);padding:9px 11px;border-radius:11px;font-size:12px;font-weight:800}}
+.wrap{{max-width:1180px;margin:auto;padding:22px 20px 40px}}
+.hero{{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:16px}}
+.hero h1{{margin:0;font-size:26px;letter-spacing:-.5px}}
+.hero p{{margin:6px 0 0;color:var(--muted);font-size:13px}}
+.live{{display:flex;align-items:center;gap:7px;background:#e6f8ee;color:#11714f;border:1px solid #ccebdc;padding:8px 11px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}}
+.live::before{{content:"";width:8px;height:8px;border-radius:50%;background:#1ab77b;box-shadow:0 0 0 4px rgba(26,183,123,.12)}}
+.stats{{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}}
+.stat{{background:#fff;border:1px solid #e4ece8;border-radius:17px;padding:15px;box-shadow:0 5px 18px rgba(17,69,52,.05)}}
+.stat .icon{{font-size:18px;margin-bottom:10px}}
+.stat b{{display:block;font-size:25px;line-height:1;color:var(--green);letter-spacing:-.4px}}
+.stat span{{display:block;margin-top:6px;color:var(--muted);font-size:11px;font-weight:700}}
+.tools{{background:#fff;border:1px solid #e4ece8;border-radius:17px;padding:11px;margin-bottom:16px;display:flex;gap:10px;box-shadow:0 5px 18px rgba(17,69,52,.04)}}
+.search{{display:flex;gap:8px;flex:1}}
+.search input{{flex:1;border:1px solid #d7e4dd;border-radius:11px;padding:11px 12px;outline:none;font-size:13px}}
+.search input:focus{{border-color:#7ac5aa;box-shadow:0 0 0 3px rgba(22,163,111,.08)}}
+.btn{{border:0;border-radius:10px;padding:10px 13px;font-weight:800;cursor:pointer}}
+.btn.primary{{background:#13a16d;color:#fff}}
+.btn.dark{{background:#075e54;color:#fff}}
+.order-card{{background:#fff;border:1px solid #e2ece6;border-radius:20px;padding:17px;margin:14px 0;box-shadow:0 8px 28px rgba(21,68,53,.06);position:relative;overflow:hidden}}
+.order-card.new::before{{content:"NUEVO";position:absolute;right:-34px;top:17px;transform:rotate(42deg);background:#f59e0b;color:#fff;padding:5px 38px;font-size:9px;font-weight:900;letter-spacing:.7px}}
+.order-top{{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding-bottom:13px;border-bottom:1px solid #edf2ef}}
+.order-id{{font-weight:900;font-size:17px;color:#0a604f}}
+.order-time{{font-size:10px;color:var(--muted);margin-top:4px}}
+.badges{{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;padding-right:3px}}
+.pill{{font-size:10px;font-weight:900;padding:6px 9px;border-radius:999px}}
+.st-new{{background:#fff3dd;color:#9a5c00}} .st-ok{{background:#e9f8ef;color:#0f774d}}
+.st-prep{{background:#eaf1ff;color:#355dad}} .st-ready{{background:#f1ebff;color:#6546aa}}
+.st-route{{background:#e8f7ff;color:#16749e}} .st-done{{background:#e8f7ec;color:#24733b}}
+.st-cancel{{background:#ffeded;color:#a93a3a}}
+.pay-wait{{background:#fff5df;color:#966300}} .pay-ok{{background:#e7f7ed;color:#18764b}}
+.pay-bad{{background:#ffeded;color:#a83a3a}} .pay-cash{{background:#f0f1f4;color:#4f5964}}
+.order-main{{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 0}}
+.customer{{display:flex;align-items:center;gap:11px;min-width:0}}
+.avatar{{width:43px;height:43px;border-radius:13px;background:linear-gradient(135deg,#0f8b6d,#18b67e);color:#fff;display:grid;place-items:center;font-size:18px;font-weight:900;box-shadow:0 6px 14px rgba(15,139,109,.17)}}
+.eyebrow{{font-size:9px;font-weight:900;color:#8a9a94;letter-spacing:.8px;margin-bottom:3px}}
+.customer strong{{font-size:14px}}
+.muted{{color:var(--muted);font-size:11px;margin-top:3px}}
+.pricebox{{background:#f0faf5;border:1px solid #d9eee3;border-radius:14px;padding:10px 13px;text-align:right;min-width:102px}}
+.price{{font-size:18px;font-weight:900;color:#0c755a}}
+.detail-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}}
+.detail{{border:1px solid #e7efeb;background:#fafcfb;border-radius:13px;padding:11px;display:flex;gap:9px;min-width:0}}
+.detail>span{{font-size:18px;line-height:1}}
+.detail small{{display:block;color:#80908a;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}}
+.detail b{{display:block;font-size:11px;line-height:1.35;word-break:break-word}}
+.card-actions{{margin-top:14px;padding-top:13px;border-top:1px solid #edf2ef;display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;align-items:end}}
+.card-actions form label{{display:block;font-size:9px;color:#788a83;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}}
+.control{{display:flex;gap:7px}}
+.control select{{flex:1;min-width:0;border:1px solid #d6e3dc;border-radius:10px;padding:10px;background:#fff;font-size:11px;color:#26453a}}
+.receipt{{align-self:end;text-decoration:none;background:#f4f6f5;border:1px solid #dbe6e0;color:#365d50;padding:10px 12px;border-radius:10px;font-size:11px;font-weight:900;text-align:center}}
+.empty{{background:#fff;border:1px dashed #cfded6;border-radius:20px;padding:42px;text-align:center;color:#6f827a}}
+.empty-icon{{font-size:34px}}
+.empty h3{{margin:9px 0 4px;color:#315247}}
+.empty p{{margin:0;font-size:12px}}
+@media(max-width:900px){{
+  .stats{{grid-template-columns:repeat(2,1fr)}} .detail-grid{{grid-template-columns:repeat(2,1fr)}}
+  .card-actions{{grid-template-columns:1fr}} .receipt{{width:100%}}
+}}
+@media(max-width:620px){{
+  .topinner{{padding:12px}} .wrap{{padding:15px 10px 30px}} .hero{{align-items:flex-start;flex-direction:column}}
+  .stats{{grid-template-columns:repeat(2,1fr);gap:8px}} .stat{{padding:13px}}
+  .detail-grid{{grid-template-columns:1fr 1fr}} .order-top{{flex-direction:column}}
+  .badges{{justify-content:flex-start}} .order-main{{align-items:flex-start}}
+  .control{{flex-direction:column}} .top-actions a:first-child{{display:none}}
+  .tools,.search{{flex-direction:column}}
+}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topinner">
+    <div class="brandmark">🌿</div>
+    <div class="brandtext">
+      <b>Punto Verde Express</b>
+      <span>Panel de pedidos · Menús & Parrillas</span>
+    </div>
+    <div class="top-actions">
+      <a href="/demo" target="_blank">👁️ Ver demo</a>
+      <a href="/admin?key={html.escape(ADMIN_KEY)}">↻ Actualizar</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <h1>Gestión de pedidos</h1>
+      <p>Controla pedidos, pagos y entregas desde un solo lugar.</p>
+    </div>
+    <div class="live">Sistema operativo</div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><div class="icon">🧾</div><b>{total}</b><span>Pedidos registrados</span></div>
+    <div class="stat"><div class="icon">🆕</div><b>{nuevos}</b><span>Pedidos nuevos</span></div>
+    <div class="stat"><div class="icon">📱</div><b>{yapes}</b><span>Yapes por verificar</span></div>
+    <div class="stat"><div class="icon">🛵</div><b>{en_ruta}</b><span>En camino</span></div>
+    <div class="stat"><div class="icon">✅</div><b>{entregados}</b><span>Entregados</span></div>
+  </section>
+
+  <section class="tools">
+    <form class="search" method="get">
+      <input type="hidden" name="key" value="{html.escape(ADMIN_KEY)}">
+      <input name="q" value="{html.escape(q)}" placeholder="🔎 Buscar por pedido, cliente, plato o dirección">
+      <button class="btn primary">Buscar</button>
+    </form>
+  </section>
+
+  {cards_html}
+</main>
+</body>
+</html>'''
     return page
 
 @app.post('/admin/order/<int:order_id>')
