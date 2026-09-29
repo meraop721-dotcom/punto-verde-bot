@@ -73,7 +73,8 @@ def order_summary(data):
 
     payment=f"\n💳 Pago: {data.get('pago','')}"
     if data.get('pago')=='Yape':
-        payment += f"\nOperación Yape: {data.get('operacion_yape','')}"
+        if data.get('comprobante_yape'):
+            payment += "\n📸 Comprobante: recibido (pendiente de verificación)"
     elif data.get('pago')=='Efectivo':
         payment += f"\nPaga con: {data.get('efectivo_entrega','')}"
         if data.get('vuelto'):
@@ -98,7 +99,53 @@ def order_summary(data):
 MAIN=("🌿 *PUNTO VERDE EXPRESS* 🌿\nMenús & Parrillas\n\n¡Hola! 👋 ¿Qué deseas hacer?\n"
       "1️⃣ Ver menú de hoy\n2️⃣ Hacer un pedido\n3️⃣ Parrillas del sábado\n4️⃣ Estado de mi pedido\n5️⃣ Hablar con una persona\n\nResponde con el número de una opción.")
 
-DEMO='''<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Punto Verde Express</title><style>body{font-family:Arial;background:#efeae2;margin:0}.w{max-width:430px;height:760px;margin:18px auto;background:white;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;box-shadow:0 5px 25px #999}.h{background:#075e54;color:white;padding:16px;font-weight:bold}.c{flex:1;padding:14px;overflow:auto;background:#efeae2}.m{white-space:pre-wrap;padding:9px 11px;border-radius:10px;margin:7px 0;max-width:82%;background:white}.me{margin-left:auto;background:#d9fdd3}.b{display:flex;gap:8px;padding:10px;background:#f0f2f5}.b input{flex:1;border:0;border-radius:20px;padding:12px}.b button{border:0;border-radius:20px;background:#00a884;color:white;padding:0 16px}</style><div class="w"><div class="h">Punto Verde Express<br><small>Prototipo del bot</small></div><div id="c" class="c"></div><div class="b"><input id="i" placeholder="Escribe 1, 2, 3..."><button onclick="s()">Enviar</button></div></div><script>const c=document.getElementById('c'),i=document.getElementById('i');function a(t,k){let d=document.createElement('div');d.className='m '+k;d.textContent=t;c.appendChild(d);c.scrollTop=c.scrollHeight}async function s(){let t=i.value.trim();if(!t)return;a(t,'me');i.value='';let r=await fetch('/demo-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});let j=await r.json();a(j.reply,'')}i.onkeydown=e=>{if(e.key==='Enter')s()};fetch('/demo-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'hola',reset:true})}).then(r=>r.json()).then(j=>a(j.reply,''));</script>'''
+DEMO='''<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Punto Verde Express</title>
+<style>
+body{font-family:Arial;background:#efeae2;margin:0}
+.w{max-width:430px;height:760px;margin:18px auto;background:white;display:flex;flex-direction:column;border-radius:18px;overflow:hidden;box-shadow:0 5px 25px #999}
+.h{background:#075e54;color:white;padding:16px;font-weight:bold}
+.c{flex:1;padding:14px;overflow:auto;background:#efeae2}
+.m{white-space:pre-wrap;padding:9px 11px;border-radius:10px;margin:7px 0;max-width:82%;background:white}
+.me{margin-left:auto;background:#d9fdd3}
+.b{display:flex;gap:8px;padding:10px;background:#f0f2f5;align-items:center}
+.b input[type=text]{flex:1;border:0;border-radius:20px;padding:12px;min-width:0}
+.b button,.photo{border:0;border-radius:20px;background:#00a884;color:white;padding:11px 14px;cursor:pointer}
+.photo{background:#54656f}
+#f{display:none}
+</style>
+<div class="w">
+  <div class="h">Punto Verde Express<br><small>Prototipo del bot</small></div>
+  <div id="c" class="c"></div>
+  <div class="b">
+    <label class="photo" for="f">📷</label>
+    <input id="f" type="file" accept="image/*" onchange="img()">
+    <input id="i" type="text" placeholder="Escribe 1, 2, 3...">
+    <button onclick="s()">Enviar</button>
+  </div>
+</div>
+<script>
+const c=document.getElementById('c'),i=document.getElementById('i'),f=document.getElementById('f');
+function a(t,k){let d=document.createElement('div');d.className='m '+k;d.textContent=t;c.appendChild(d);c.scrollTop=c.scrollHeight}
+async function s(){
+  let t=i.value.trim(); if(!t)return;
+  a(t,'me'); i.value='';
+  let r=await fetch('/demo-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
+  let j=await r.json(); a(j.reply,'')
+}
+async function img(){
+  if(!f.files.length)return;
+  a('📷 Comprobante de Yape enviado','me');
+  let fd=new FormData(); fd.append('image',f.files[0]);
+  let r=await fetch('/demo-image',{method:'POST',body:fd});
+  let j=await r.json(); a(j.reply,''); f.value=''
+}
+i.onkeydown=e=>{if(e.key==='Enter')s()};
+fetch('/demo-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'hola',reset:true})})
+.then(r=>r.json()).then(j=>a(j.reply,''));
+</script>'''
 
 def db():
     conn=sqlite3.connect(DB_PATH)
@@ -326,14 +373,14 @@ def reply(phone,text,force_day=None):
 
         if t=='1':
             data['pago']='Yape'
-            setsess(phone,'yape_operacion',data)
+            setsess(phone,'yape_comprobante',data)
             return (
                 "📱 *PAGO POR YAPE*\n\n"
                 f"Yapea a: *{YAPE_NUMBER}*\n"
                 f"Titular: *{YAPE_HOLDER}*\n"
                 f"Monto: *{total_amount(data.get('modo'),data.get('zona'))}*\n\n"
-                "Para esta simulación, escribe un código de operación "
-                "(por ejemplo: *123456*)."
+                "📸 Después de realizar el pago, envía una *captura del comprobante de Yape*.\n"
+                "El pedido quedará pendiente de verificación del pago."
             )
 
         data['pago']='Efectivo'
@@ -345,12 +392,11 @@ def reply(phone,text,force_day=None):
             "Escribe el monto, por ejemplo *20*, o escribe *exacto*."
         )
 
-    if state=='yape_operacion':
-        if len(raw) < 3:
-            return 'Escribe un código de operación válido para la simulación.'
-        data['operacion_yape']=raw
-        setsess(phone,'confirmar',data)
-        return order_summary(data)
+    if state=='yape_comprobante':
+        return (
+            "📸 Para continuar con Yape, envía una *imagen del comprobante*.\n"
+            "No necesitas escribir el código de operación."
+        )
 
     if state=='efectivo_monto':
         total_num=total_numeric(data.get('modo'),data.get('zona'))
@@ -376,13 +422,44 @@ def reply(phone,text,force_day=None):
         return order_summary(data)
     if state=='confirmar':
         if t=='1':
-            oid=new_order(phone,data); setsess(phone,'main',{}); return f'✅ *Pedido #{oid} recibido*\nTu pedido quedó registrado.\n\n📦 Para seguirlo, vuelve al menú y elige *4. Estado de mi pedido*.\n\nGracias por elegir Punto Verde Express 🌿\nEscribe *0* para volver.'
+            oid=new_order(phone,data)
+            setsess(phone,'main',{})
+            pago_msg = (
+                "\n📱 Pago Yape: *comprobante recibido, pendiente de verificación*."
+                if data.get('pago')=='Yape'
+                else "\n💵 Pago: *efectivo*."
+            )
+            return (
+                f"✅ *Pedido #{oid} recibido*\n"
+                "Tu pedido quedó registrado."
+                + pago_msg
+                + "\n\n📦 Para seguirlo, vuelve al menú y elige *4. Estado de mi pedido*."
+                + "\n\nGracias por elegir Punto Verde Express 🌿\nEscribe *0* para volver."
+            )
         if t=='2': setsess(phone,'main',{}); return 'Pedido cancelado.\n\n'+MAIN
         return 'Responde *1* para confirmar o *2* para cancelar.'
     if state=='parrilla':
         oid=new_order(phone,{'tipo':'Parrilla del sábado','solicitud':raw}); setsess(phone,'main',{}); p=SATURDAY_GRILL_PRICE or 'por confirmar'
         return f'🔥 *Reserva #{oid} registrada*\nSolicitud: {raw}\nPrecio: {p}\nPendiente de confirmación.\n\nEscribe *0* para volver.'
     setsess(phone,'main',{}); return MAIN
+
+
+def receive_image(phone, media_ref):
+    state,data=sess(phone)
+    if state!='yape_comprobante':
+        return (
+            "📷 Recibí una imagen, pero ahora mismo no estoy esperando un comprobante de Yape.\n"
+            "Escribe *0* para volver al menú."
+        )
+
+    data['comprobante_yape']=media_ref or 'recibido'
+    data['pago_estado']='Pendiente de verificación'
+    setsess(phone,'confirmar',data)
+    return (
+        "✅ *Comprobante recibido*\n\n"
+        "El pago quedó *pendiente de verificación*.\n\n"
+        + order_summary(data)
+    )
 
 def send_text(to,body):
     if not (ACCESS_TOKEN and PHONE_NUMBER_ID and GRAPH_API_VERSION): return None
@@ -406,6 +483,16 @@ def dm():
     p=request.get_json(silent=True) or {}; phone='demo-user'
     if p.get('reset'): setsess(phone,'main',{})
     return jsonify({'reply':reply(phone,str(p.get('text','')))})
+@app.post('/demo-image')
+def demo_image():
+    phone='demo-user'
+    f=request.files.get('image')
+    if not f:
+        return jsonify({'reply':'No recibí ninguna imagen.'}),400
+    mimetype=(f.mimetype or '').lower()
+    if not mimetype.startswith('image/'):
+        return jsonify({'reply':'Envía una imagen del comprobante de Yape.'}),400
+    return jsonify({'reply':receive_image(phone,'demo:'+f.filename)})
 @app.get('/webhook')
 def verify():
     if request.args.get('hub.mode')=='subscribe' and request.args.get('hub.verify_token')==VERIFY_TOKEN:return Response(request.args.get('hub.challenge',''),200)
@@ -419,11 +506,15 @@ def webhook():
         value=p['entry'][0]['changes'][0]['value']; msgs=value.get('messages',[])
         if msgs:
             m=msgs[0]; sender=m['from']; typ=m.get('type')
-            if typ=='text': incoming=m['text']['body']
-            elif typ=='button': incoming=m['button'].get('text','')
-            elif typ=='interactive': incoming=m['interactive'].get('button_reply',{}).get('id') or m['interactive'].get('list_reply',{}).get('id','')
-            else: incoming='hola'
-            send_text(sender,reply(sender,incoming))
+            if typ=='image':
+                media_id=m.get('image',{}).get('id','')
+                send_text(sender,receive_image(sender,media_id))
+            else:
+                if typ=='text': incoming=m['text']['body']
+                elif typ=='button': incoming=m['button'].get('text','')
+                elif typ=='interactive': incoming=m['interactive'].get('button_reply',{}).get('id') or m['interactive'].get('list_reply',{}).get('id','')
+                else: incoming='hola'
+                send_text(sender,reply(sender,incoming))
     except Exception as e: app.logger.exception(e)
     return Response('EVENT_RECEIVED',200)
 @app.get('/admin')
@@ -456,8 +547,8 @@ def admin_panel():
         )
         cliente=d.get('cliente','Sin nombre')
         pago=d.get('pago','Sin registrar')
-        if pago=='Yape' and d.get('operacion_yape'):
-            pago += f" — Op. {d.get('operacion_yape')}"
+        if pago=='Yape' and d.get('comprobante_yape'):
+            pago += " — 📸 Comprobante recibido / pendiente de verificar"
         elif pago=='Efectivo' and d.get('efectivo_entrega'):
             pago += f" — Paga con {d.get('efectivo_entrega')}"
 
