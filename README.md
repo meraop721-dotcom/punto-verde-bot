@@ -3,8 +3,8 @@
 Bot prototipo creado para la Actividad 1 de Design Thinking.
 
 ## Funciones
-- Menú de lunes a viernes según el informe.
-- Sábado: solamente parrillas.
+- Menú de lunes a viernes actualizado según las entrevistas y la nueva propuesta local.
+- Sábado: solamente parrillas (pollo a la parrilla, parrilla familiar y chorizo + pollo + carne).
 - Pedido guiado: entrada, segundo, recojo/delivery, hora y confirmación.
 - Estado del último pedido.
 - Opción de atención humana.
@@ -60,11 +60,12 @@ Tu servidor debe estar publicado en HTTPS. En Meta configura el callback como:
 y usa el mismo `VERIFY_TOKEN`.
 
 ## Precios
-El informe todavía no fija precios, así que el bot no inventa montos. Cuando los definan, completa:
+El rango validado por las entrevistas fue S/10–15. En esta demo se mantiene S/12 como precio referencial del menú; el precio definitivo puede configurarse mediante variables de entorno. Para las parrillas, el precio sigue pendiente de definición.
 
 ```env
 MENU_PRICE=S/ 12.00
-DELIVERY_FEE=S/ 3.00
+DELIVERY_FEE_GUADALUPE=3.00
+DELIVERY_FEE_CHEPEN=5.00
 SATURDAY_GRILL_PRICE=S/ 20.00
 ```
 
