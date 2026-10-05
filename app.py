@@ -185,7 +185,7 @@ button{cursor:pointer}
 .chat{flex:1;min-height:0;overflow:auto;padding:14px 11px;background:#edf3ef;background-image:radial-gradient(#d6e4dc 1px,transparent 1px);background-size:18px 18px}
 .msgrow{display:flex;align-items:flex-end;gap:6px;margin:8px 0}.msgrow.me{justify-content:flex-end}
 .botavatar{width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid #d9e5df;display:grid;place-items:center;font-size:13px;box-shadow:0 2px 7px rgba(0,0,0,.07);flex:0 0 auto}
-.bubble{max-width:84%;background:#fff;border-radius:15px 15px 15px 5px;padding:9px 11px 7px;box-shadow:0 1px 2px rgba(0,0,0,.08);font-size:13px;line-height:1.43;word-break:break-word}.media-stack{margin-top:8px;display:grid;gap:7px}.media-card{overflow:hidden;border-radius:12px;border:1px solid #e0e8e4;background:#f7faf8}.media-card img{display:block;width:100%;max-height:210px;object-fit:cover}.media-cap{padding:7px 8px 8px;display:grid;gap:2px;font-size:9px;line-height:1.25}.media-cap strong{font-size:10px;color:#23473b}.media-cap span{color:#8a9892}
+.bubble{max-width:84%;background:#fff;border-radius:15px 15px 15px 5px;padding:9px 11px 7px;box-shadow:0 1px 2px rgba(0,0,0,.08);font-size:13px;line-height:1.43;word-break:break-word}
 .me .bubble{background:#d9fdd3;border-radius:15px 15px 5px 15px}
 .meta{margin-top:4px;color:#82928b;font-size:8.5px;text-align:right}
 .typing{display:none;align-items:center;gap:4px;background:#fff;border-radius:13px 13px 13px 5px;padding:10px 12px;width:max-content;box-shadow:0 1px 2px rgba(0,0,0,.08);margin:6px 0 7px 32px}
@@ -273,7 +273,7 @@ function fmt(t){
 function now(){
   return new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})
 }
-function add(t,who,media=[]){
+function add(t,who){
   const row=document.createElement('div');
   row.className='msgrow'+(who==='me'?' me':'');
   if(who!=='me'){
@@ -285,22 +285,6 @@ function add(t,who,media=[]){
   const b=document.createElement('div');
   b.className='bubble';
   b.innerHTML=fmt(t)+'<div class="meta">'+now()+(who==='me'?' ✓✓':'')+'</div>';
-  if(media && media.length){
-    const stack=document.createElement('div'); stack.className='media-stack';
-    media.forEach(m=>{
-      const card=document.createElement('div'); card.className='media-card';
-      const im=document.createElement('img'); im.src=m.url; im.alt=m.title||'Imagen'; im.loading='lazy';
-      im.onerror=()=>card.remove();
-      card.appendChild(im);
-      if(who!=='me' && (m.title||m.credit)){
-        const cap=document.createElement('div'); cap.className='media-cap';
-        cap.innerHTML='<strong>'+esc(m.title||'Imagen referencial')+'</strong><span>'+esc(m.credit||'Imagen referencial')+'</span>';
-        card.appendChild(cap);
-      }
-      stack.appendChild(card);
-    });
-    b.appendChild(stack);
-  }
   row.appendChild(b);
   c.appendChild(row);
   c.scrollTop=c.scrollHeight
@@ -323,7 +307,7 @@ async function sendText(t){
     const j=await r.json();
     await new Promise(r=>setTimeout(r,350));
     showTyping(false);
-    add(j.reply,'bot',j.images||[])
+    add(j.reply,'bot')
   }catch(e){
     showTyping(false);
     add('No pude responder en este momento. Intenta nuevamente.','bot')
@@ -338,23 +322,20 @@ async function s(){
 function quick(v){sendText(v)}
 async function img(){
   if(!f.files.length)return;
-  const file=f.files[0];
-  const previewUrl=URL.createObjectURL(file);
-  add('📷 Imagen enviada','me',[{url:previewUrl,title:'',credit:''}]);
+  add('📷 Comprobante de Yape enviado','me');
   showTyping(true);
   const fd=new FormData();
-  fd.append('image',file);
+  fd.append('image',f.files[0]);
   try{
     const r=await fetch('/demo-image',{method:'POST',body:fd});
     const j=await r.json();
     await new Promise(r=>setTimeout(r,450));
     showTyping(false);
-    add(j.reply,'bot',j.images||[]);
+    add(j.reply,'bot');
   }catch(e){
     showTyping(false);
     add('No pude cargar la imagen. Intenta otra vez.','bot');
   }
-  setTimeout(()=>URL.revokeObjectURL(previewUrl),10000);
   f.value=''
 }
 async function resetChat(){
@@ -553,110 +534,6 @@ def menu_text(day=None):
             'Escribe *RESERVAR* para dejar una reserva o *0* para volver.'
         )
     return '🌿 Hoy es domingo y no tenemos atención programada. Escribe *0* para volver.'
-
-DEMO_IMAGES={
-  'arroz con pollo':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Arroz%20con%20pollo%20peruano.jpg?width=900',
-    'credit':'MiguelAlanCS · Wikimedia Commons · CC BY-SA 4.0'
-  },
-  'ají de gallina':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Aj%C3%AD%20de%20gallina.jpg?width=900',
-    'credit':'MiguelAlanCS · Wikimedia Commons · CC BY-SA 4.0'
-  },
-  'tallarines verdes':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Tallarines%20verdes.jpg?width=900',
-    'credit':'MiguelAlanCS · Wikimedia Commons · CC BY-SA 4.0'
-  },
-  'lomo saltado':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Lomo%20Salteado.jpg?width=900',
-    'credit':'PapiPijuan · Wikimedia Commons · CC BY-SA 4.0'
-  },
-  'arroz con pato':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Arroz%20con%20pato%20a%20la%20chiclayana.JPG?width=900',
-    'credit':'Dtarazona · Wikimedia Commons · Dominio público'
-  },
-  'seco de cabrito':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Seco%20de%20cabrito%20con%20frejoles%20en%20Chiclayo%2C%20Peru.jpg?width=900',
-    'credit':'Wikimedia Commons · imagen referencial'
-  },
-  'pescado frito':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Pescaito%20frito.jpg?width=900',
-    'credit':'Juan Emilio Prades Bel · Wikimedia Commons · CC BY 4.0'
-  },
-  'ceviche':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Ceviche%20de%20pescado.JPG?width=900',
-    'credit':'Dtarazona · Wikimedia Commons · Dominio público'
-  },
-  'papa rellena':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Peru%20PapasRellenas2.jpg?width=900',
-    'credit':'Håkan Svensson (Xauxa) · Wikimedia Commons · GFDL'
-  },
-  'causa':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Causa.JPG?width=900',
-    'credit':'Manuel González Olaechea y Franco · Wikimedia Commons · imagen referencial'
-  },
-  'parrilla':{
-    'url':'https://commons.wikimedia.org/wiki/Special:Redirect/file/Pollo%20a%20la%20parrilla%20of%20Argentina%20%2819035%29.jpg?width=1000',
-    'credit':'Horacio Cambeiro · Wikimedia Commons · CC BY-SA 4.0'
-  }
-}
-
-def demo_image_for_dish(name):
-    n=(name or '').lower().strip()
-    direct={
-      'arroz con pollo':'arroz con pollo','ají de gallina':'ají de gallina','tallarines rojos con pollo':'tallarines verdes',
-      'tallarines verdes con pollo':'tallarines verdes','tallarines':'tallarines verdes','lomo saltado':'lomo saltado',
-      'arroz con pato':'arroz con pato','seco de cabrito':'seco de cabrito','pescado frito':'pescado frito',
-      'pescado sudado':'pescado frito','chilcano de pescado':'ceviche','causa de pollo':'causa','causa de atún':'causa',
-      'papa rellena':'papa rellena'
-    }
-    key=direct.get(n)
-    if not key:
-        for k,v in direct.items():
-            if k in n or n in k:
-                key=v; break
-    if not key:
-        return None
-    item=DEMO_IMAGES.get(key)
-    if not item: return None
-    return {'url':item['url'],'title':name.title() if name else key.title(),'credit':item['credit']}
-
-def demo_images(phone, incoming, bot_reply):
-    state,data=sess(phone)
-    out=[]
-    text=(bot_reply or '').lower()
-
-    # En el menú de hoy mostramos hasta 3 segundos para que el cliente vea opciones reales.
-    if 'menú del' in text:
-        day=datetime.now(TZ).weekday()
-        if day in MENUS:
-            for dish in MENUS[day]['segundos']:
-                media=demo_image_for_dish(dish)
-                if media: out.append(media)
-
-    # En el sábado destacamos la parrilla.
-    if 'especial de sábado: parrillas' in text or 'parrillas' in text:
-        media=demo_image_for_dish('parrilla')
-        if media: out.append(media)
-
-    # Cuando se selecciona una entrada o un segundo, mostramos su imagen.
-    for field in ('entrada','segundo'):
-        media=demo_image_for_dish(data.get(field,''))
-        if media: out.append(media)
-
-    # También detectamos un plato nombrado en la respuesta.
-    names=sorted(DEMO_IMAGES.keys(), key=len, reverse=True)
-    for key in names:
-        if key in text:
-            media=demo_image_for_dish(key)
-            if media: out.append(media)
-
-    # Elimina duplicados y limita el peso visual del chat.
-    unique=[]; seen=set()
-    for m in out:
-        if m['url'] in seen: continue
-        seen.add(m['url']); unique.append(m)
-    return unique[:3]
 
 def reply(phone,text,force_day=None):
     raw=(text or '').strip(); t=raw.lower()
@@ -914,9 +791,7 @@ def demo(): return render_template_string(DEMO)
 def dm():
     p=request.get_json(silent=True) or {}; phone='demo-user'
     if p.get('reset'): setsess(phone,'main',{})
-    incoming=str(p.get('text',''))
-    bot_reply=reply(phone,incoming)
-    return jsonify({'reply':bot_reply,'images':demo_images(phone,incoming,bot_reply)})
+    return jsonify({'reply':reply(phone,str(p.get('text','')))})
 @app.post('/demo-image')
 def demo_image():
     phone='demo-user'
