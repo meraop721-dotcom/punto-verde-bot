@@ -972,6 +972,12 @@ def admin_panel():
         return Response('Acceso no autorizado',403)
 
     q=(request.args.get('q') or '').strip().lower()
+    status_filter=(request.args.get('status') or '').strip()
+    payment_filter=(request.args.get('pay') or '').strip()
+
+    allowed=['Pedido recibido','Confirmado','En preparación','Listo para recojo','En camino','Entregado','Cancelado']
+    pay_allowed=['Pendiente de verificación','Pago verificado','Pago rechazado','Pago al entregar','Pagado']
+
     with db() as c:
         rows=c.execute(
             'SELECT id,phone,details,status,created_at,updated_at FROM orders ORDER BY id DESC LIMIT 150'
@@ -982,10 +988,7 @@ def admin_panel():
     en_ruta=sum(1 for r in rows if r[3]=='En camino')
     entregados=sum(1 for r in rows if r[3]=='Entregado')
     yapes=0
-    cards=[]
-
-    allowed=['Pedido recibido','Confirmado','En preparación','Listo para recojo','En camino','Entregado','Cancelado']
-    pay_allowed=['Pendiente de verificación','Pago verificado','Pago rechazado','Pago al entregar','Pagado']
+    hoy=0
 
     def status_class(value):
         return {
@@ -1016,6 +1019,34 @@ def admin_panel():
         except Exception:
             return str(value)
 
+    def iso_date(value):
+        try:
+            return datetime.fromisoformat(value).astimezone(TZ).date()
+        except Exception:
+            return None
+
+    def order_total(details):
+        if details.get('entrada'):
+            return total_numeric(details.get('modo'),details.get('zona')) or 0.0
+        try:
+            return float(str(SATURDAY_GRILL_PRICE).replace('S/','').strip())
+        except Exception:
+            return 0.0
+
+    today=datetime.now(TZ).date()
+    for oid,phone,details_json,status,created_at,updated_at in rows:
+        try:
+            d=json.loads(details_json or '{}')
+        except Exception:
+            d={}
+        if d.get('pago')=='Yape' and order_payment_status(d)=='Pendiente de verificación':
+            yapes+=1
+        if iso_date(created_at)==today and status!='Cancelado':
+            hoy+=order_total(d)
+
+    cards=[]
+    step_names=['Pedido recibido','Confirmado','En preparación','Listo para recojo','En camino','Entregado']
+
     for oid,phone,details_json,status,created_at,updated_at in rows:
         try:
             d=json.loads(details_json or '{}')
@@ -1023,14 +1054,17 @@ def admin_panel():
             d={}
 
         pay_status=order_payment_status(d)
-        if d.get('pago')=='Yape' and pay_status=='Pendiente de verificación':
-            yapes+=1
 
         blob=' '.join([
             str(oid),str(phone),d.get('cliente',''),d.get('entrada',''),
             d.get('segundo',''),d.get('direccion',''),status,pay_status
         ]).lower()
+
         if q and q not in blob:
+            continue
+        if status_filter and status!=status_filter:
+            continue
+        if payment_filter and pay_status!=payment_filter:
             continue
 
         pedido=' + '.join(x for x in [d.get('entrada'),d.get('segundo')] if x) or d.get('tipo','Pedido')
@@ -1061,11 +1095,14 @@ def admin_panel():
             receipt=(
                 f'<a class="receipt" target="_blank" '
                 f'href="/admin/order/{oid}/receipt?key={html.escape(ADMIN_KEY)}">'
-                '📸 Abrir comprobante</a>'
+                '📸 Ver comprobante</a>'
             )
 
-        is_new=' new' if status=='Pedido recibido' else ''
-        payment_icon='📱' if d.get('pago')=='Yape' else '💵'
+        phone_clean=''.join(ch for ch in str(phone) if ch.isdigit())
+        whatsapp=''
+        if phone_clean and phone_clean!='' and not str(phone).startswith('demo'):
+            whatsapp=f'<a class="wa" target="_blank" href="https://wa.me/{phone_clean}">💬 WhatsApp</a>'
+
         client=html.escape(d.get('cliente','Sin nombre'))
         pedido_safe=html.escape(pedido)
         entrega_safe=html.escape(entrega)
@@ -1074,7 +1111,26 @@ def admin_panel():
         status_safe=html.escape(status)
         pay_safe=html.escape(pay_status)
         hora=html.escape(d.get('hora','Sin horario'))
+        phone_safe=html.escape(str(phone))
         updated=html.escape(pretty_time(updated_at or created_at))
+        is_new=' new' if status=='Pedido recibido' else ''
+
+        timeline=[]
+        if status=='Cancelado':
+            timeline=['<div class="cancel-state">❌ Este pedido fue cancelado.</div>']
+        else:
+            current_index=step_names.index(status) if status in step_names else 0
+            for i,name in enumerate(step_names):
+                cls='done' if i<current_index else ('active' if i==current_index else '')
+                timeline.append(
+                    f'<div class="tl-step {cls}"><span>{i+1}</span><small>{html.escape(name)}</small></div>'
+                )
+            timeline_html='<div class="timeline">'+''.join(timeline)+'</div>'
+            timeline= [timeline_html]
+
+        payment_alert=''
+        if d.get('pago')=='Yape' and pay_status=='Pendiente de verificación':
+            payment_alert='<div class="payment-alert">⚠️ <div><b>Yape pendiente de verificación</b><span>Revisa el comprobante antes de confirmar el pedido.</span></div></div>'
 
         cards.append(
             f'''
@@ -1082,7 +1138,7 @@ def admin_panel():
               <div class="order-top">
                 <div>
                   <div class="order-id">Pedido #{oid}</div>
-                  <div class="order-time">Actualizado {updated}</div>
+                  <div class="order-time">{updated}</div>
                 </div>
                 <div class="badges">
                   <span class="pill {status_class(status)}">{status_safe}</span>
@@ -1090,16 +1146,18 @@ def admin_panel():
                 </div>
               </div>
 
+              {payment_alert}
+
               <div class="order-main">
                 <section class="customer">
                   <div class="avatar">{client[:1].upper() if client else "P"}</div>
-                  <div>
+                  <div class="customer-info">
                     <div class="eyebrow">CLIENTE</div>
                     <strong>{client}</strong>
                     <div class="muted">{delivery_badge} · {hora}</div>
+                    <div class="phone-line">📱 {phone_safe} {whatsapp}</div>
                   </div>
                 </section>
-
                 <section class="pricebox">
                   <div class="eyebrow">TOTAL</div>
                   <div class="price">{total_safe}</div>
@@ -1107,40 +1165,23 @@ def admin_panel():
               </div>
 
               <div class="detail-grid">
-                <div class="detail">
-                  <span>🍽️</span>
-                  <div><small>Pedido</small><b>{pedido_safe}</b></div>
-                </div>
-                <div class="detail">
-                  <span>📍</span>
-                  <div><small>Entrega</small><b>{entrega_safe}</b></div>
-                </div>
-                <div class="detail">
-                  <span>{payment_icon}</span>
-                  <div><small>Método de pago</small><b>{metodo}</b></div>
-                </div>
-                <div class="detail">
-                  <span>🧾</span>
-                  <div><small>Referencia</small><b>#{oid}</b></div>
-                </div>
+                <div class="detail"><span>🍽️</span><div><small>Pedido</small><b>{pedido_safe}</b></div></div>
+                <div class="detail"><span>📍</span><div><small>Entrega</small><b>{entrega_safe}</b></div></div>
+                <div class="detail"><span>{'📱' if d.get('pago')=='Yape' else '💵'}</span><div><small>Pago</small><b>{metodo}</b></div></div>
+                <div class="detail"><span>🧾</span><div><small>Referencia</small><b>#{oid}</b></div></div>
               </div>
 
+              {''.join(timeline)}
+
               <div class="card-actions">
-                {receipt}
+                <div class="link-actions">{receipt}{whatsapp}</div>
                 <form method="post" action="/admin/order/{oid}?key={html.escape(ADMIN_KEY)}">
                   <label>Estado del pedido</label>
-                  <div class="control">
-                    <select name="status">{opts}</select>
-                    <button class="btn primary">Actualizar</button>
-                  </div>
+                  <div class="control"><select name="status">{opts}</select><button class="btn primary">Actualizar</button></div>
                 </form>
-
                 <form method="post" action="/admin/order/{oid}/payment?key={html.escape(ADMIN_KEY)}">
                   <label>Estado del pago</label>
-                  <div class="control">
-                    <select name="payment_status">{popts}</select>
-                    <button class="btn dark">Guardar pago</button>
-                  </div>
+                  <div class="control"><select name="payment_status">{popts}</select><button class="btn dark">Guardar pago</button></div>
                 </form>
               </div>
             </article>
@@ -1151,11 +1192,21 @@ def admin_panel():
       <div class="empty">
         <div class="empty-icon">🧾</div>
         <h3>No se encontraron pedidos</h3>
-        <p>Prueba otro término de búsqueda o crea un pedido desde la demo.</p>
+        <p>Prueba otro filtro o crea un pedido desde la demo.</p>
       </div>
     '''
 
-    page=f'''<!doctype html>
+    key=html.escape(ADMIN_KEY)
+    status_options='<option value="">Todos los estados</option>'+''.join(
+        '<option value="'+html.escape(s)+'"'+(' selected' if s==status_filter else '')+'>'+html.escape(s)+'</option>'
+        for s in allowed
+    )
+    pay_options='<option value="">Todos los pagos</option>'+''.join(
+        '<option value="'+html.escape(s)+'"'+(' selected' if s==payment_filter else '')+'>'+html.escape(s)+'</option>'
+        for s in pay_allowed
+    )
+
+    page="""<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -1163,135 +1214,90 @@ def admin_panel():
 <meta name="theme-color" content="#075e54">
 <title>Panel · Punto Verde Express</title>
 <style>
-:root{{
-  --green:#075e54;--green2:#0d7b65;--accent:#16a36f;--bg:#f3f7f5;--paper:#fff;
-  --ink:#18342b;--muted:#74867f;--line:#dce8e1;--orange:#f59e0b;--red:#dc4c4c;
-}}
-*{{box-sizing:border-box}}
-body{{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}}
-a{{color:inherit}}
-.topbar{{
-  position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#064e45,#08745f);color:white;
-  box-shadow:0 8px 24px rgba(18,70,55,.16)
-}}
-.topinner{{max-width:1180px;margin:auto;padding:14px 20px;display:flex;align-items:center;gap:12px}}
-.brandmark{{width:42px;height:42px;background:#fff;border-radius:13px;display:grid;place-items:center;font-size:23px;box-shadow:0 4px 14px rgba(0,0,0,.13)}}
-.brandtext{{flex:1;min-width:0}}
-.brandtext b{{display:block;font-size:16px}}
-.brandtext span{{font-size:11px;opacity:.82}}
-.top-actions{{display:flex;gap:8px}}
-.top-actions a{{text-decoration:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);padding:9px 11px;border-radius:11px;font-size:12px;font-weight:800}}
-.wrap{{max-width:1180px;margin:auto;padding:22px 20px 40px}}
-.hero{{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:16px}}
-.hero h1{{margin:0;font-size:26px;letter-spacing:-.5px}}
-.hero p{{margin:6px 0 0;color:var(--muted);font-size:13px}}
-.live{{display:flex;align-items:center;gap:7px;background:#e6f8ee;color:#11714f;border:1px solid #ccebdc;padding:8px 11px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}}
-.live::before{{content:"";width:8px;height:8px;border-radius:50%;background:#1ab77b;box-shadow:0 0 0 4px rgba(26,183,123,.12)}}
-.stats{{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}}
-.stat{{background:#fff;border:1px solid #e4ece8;border-radius:17px;padding:15px;box-shadow:0 5px 18px rgba(17,69,52,.05)}}
-.stat .icon{{font-size:18px;margin-bottom:10px}}
-.stat b{{display:block;font-size:25px;line-height:1;color:var(--green);letter-spacing:-.4px}}
-.stat span{{display:block;margin-top:6px;color:var(--muted);font-size:11px;font-weight:700}}
-.tools{{background:#fff;border:1px solid #e4ece8;border-radius:17px;padding:11px;margin-bottom:16px;display:flex;gap:10px;box-shadow:0 5px 18px rgba(17,69,52,.04)}}
-.search{{display:flex;gap:8px;flex:1}}
-.search input{{flex:1;border:1px solid #d7e4dd;border-radius:11px;padding:11px 12px;outline:none;font-size:13px}}
-.search input:focus{{border-color:#7ac5aa;box-shadow:0 0 0 3px rgba(22,163,111,.08)}}
-.btn{{border:0;border-radius:10px;padding:10px 13px;font-weight:800;cursor:pointer}}
-.btn.primary{{background:#13a16d;color:#fff}}
-.btn.dark{{background:#075e54;color:#fff}}
-.order-card{{background:#fff;border:1px solid #e2ece6;border-radius:20px;padding:17px;margin:14px 0;box-shadow:0 8px 28px rgba(21,68,53,.06);position:relative;overflow:hidden}}
-.order-card.new::before{{content:"NUEVO";position:absolute;right:-34px;top:17px;transform:rotate(42deg);background:#f59e0b;color:#fff;padding:5px 38px;font-size:9px;font-weight:900;letter-spacing:.7px}}
-.order-top{{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding-bottom:13px;border-bottom:1px solid #edf2ef}}
-.order-id{{font-weight:900;font-size:17px;color:#0a604f}}
-.order-time{{font-size:10px;color:var(--muted);margin-top:4px}}
-.badges{{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;padding-right:3px}}
-.pill{{font-size:10px;font-weight:900;padding:6px 9px;border-radius:999px}}
-.st-new{{background:#fff3dd;color:#9a5c00}} .st-ok{{background:#e9f8ef;color:#0f774d}}
-.st-prep{{background:#eaf1ff;color:#355dad}} .st-ready{{background:#f1ebff;color:#6546aa}}
-.st-route{{background:#e8f7ff;color:#16749e}} .st-done{{background:#e8f7ec;color:#24733b}}
-.st-cancel{{background:#ffeded;color:#a93a3a}}
-.pay-wait{{background:#fff5df;color:#966300}} .pay-ok{{background:#e7f7ed;color:#18764b}}
-.pay-bad{{background:#ffeded;color:#a83a3a}} .pay-cash{{background:#f0f1f4;color:#4f5964}}
-.order-main{{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 0}}
-.customer{{display:flex;align-items:center;gap:11px;min-width:0}}
-.avatar{{width:43px;height:43px;border-radius:13px;background:linear-gradient(135deg,#0f8b6d,#18b67e);color:#fff;display:grid;place-items:center;font-size:18px;font-weight:900;box-shadow:0 6px 14px rgba(15,139,109,.17)}}
-.eyebrow{{font-size:9px;font-weight:900;color:#8a9a94;letter-spacing:.8px;margin-bottom:3px}}
-.customer strong{{font-size:14px}}
-.muted{{color:var(--muted);font-size:11px;margin-top:3px}}
-.pricebox{{background:#f0faf5;border:1px solid #d9eee3;border-radius:14px;padding:10px 13px;text-align:right;min-width:102px}}
-.price{{font-size:18px;font-weight:900;color:#0c755a}}
-.detail-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}}
-.detail{{border:1px solid #e7efeb;background:#fafcfb;border-radius:13px;padding:11px;display:flex;gap:9px;min-width:0}}
-.detail>span{{font-size:18px;line-height:1}}
-.detail small{{display:block;color:#80908a;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}}
-.detail b{{display:block;font-size:11px;line-height:1.35;word-break:break-word}}
-.card-actions{{margin-top:14px;padding-top:13px;border-top:1px solid #edf2ef;display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;align-items:end}}
-.card-actions form label{{display:block;font-size:9px;color:#788a83;font-weight:900;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}}
-.control{{display:flex;gap:7px}}
-.control select{{flex:1;min-width:0;border:1px solid #d6e3dc;border-radius:10px;padding:10px;background:#fff;font-size:11px;color:#26453a}}
-.receipt{{align-self:end;text-decoration:none;background:#f4f6f5;border:1px solid #dbe6e0;color:#365d50;padding:10px 12px;border-radius:10px;font-size:11px;font-weight:900;text-align:center}}
-.empty{{background:#fff;border:1px dashed #cfded6;border-radius:20px;padding:42px;text-align:center;color:#6f827a}}
-.empty-icon{{font-size:34px}}
-.empty h3{{margin:9px 0 4px;color:#315247}}
-.empty p{{margin:0;font-size:12px}}
-@media(max-width:900px){{
-  .stats{{grid-template-columns:repeat(2,1fr)}} .detail-grid{{grid-template-columns:repeat(2,1fr)}}
-  .card-actions{{grid-template-columns:1fr}} .receipt{{width:100%}}
-}}
-@media(max-width:620px){{
-  .topinner{{padding:12px}} .wrap{{padding:15px 10px 30px}} .hero{{align-items:flex-start;flex-direction:column}}
-  .stats{{grid-template-columns:repeat(2,1fr);gap:8px}} .stat{{padding:13px}}
-  .detail-grid{{grid-template-columns:1fr 1fr}} .order-top{{flex-direction:column}}
-  .badges{{justify-content:flex-start}} .order-main{{align-items:flex-start}}
-  .control{{flex-direction:column}} .top-actions a:first-child{{display:none}}
-  .tools,.search{{flex-direction:column}}
-}}
+:root{
+ --g:#075e54;--g2:#0d7b65;--mint:#e8f7f0;--ink:#18342b;--muted:#74867f;--bg:#f2f6f4;
+ --line:#dce8e1;--orange:#f59e0b;--red:#c84747;--blue:#3978c8;--purple:#7354b9;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+a{text-decoration:none}.topbar{position:sticky;top:0;z-index:30;background:linear-gradient(135deg,#064e45,#08745f);color:#fff;box-shadow:0 8px 28px rgba(17,70,55,.16)}
+.topinner{max-width:1220px;margin:auto;padding:13px 18px;display:flex;align-items:center;gap:11px}.brandmark{width:42px;height:42px;border-radius:13px;background:#fff;display:grid;place-items:center;font-size:22px;box-shadow:0 5px 14px rgba(0,0,0,.12)}
+.brandtext{flex:1;min-width:0}.brandtext b{display:block;font-size:16px}.brandtext span{display:block;margin-top:2px;font-size:10px;opacity:.78}.top-actions{display:flex;gap:7px}.top-actions a{padding:9px 11px;border:1px solid rgba(255,255,255,.20);border-radius:10px;color:#fff;background:rgba(255,255,255,.08);font-size:10px;font-weight:900}
+.shell{max-width:1220px;margin:auto;padding:20px 18px 45px}.hero{display:flex;align-items:end;justify-content:space-between;gap:15px;margin-bottom:15px}.hero h1{margin:0;font-size:27px;letter-spacing:-.6px}.hero p{margin:5px 0 0;color:var(--muted);font-size:11px}.live{padding:8px 10px;border-radius:99px;background:#e7f8ef;color:#11734f;border:1px solid #cdebdc;font-size:10px;font-weight:900;white-space:nowrap}.live:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#1bb77c;margin-right:5px;box-shadow:0 0 0 4px rgba(27,183,124,.12)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}.stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 5px 20px rgba(18,70,55,.04)}.stat .top{display:flex;justify-content:space-between;align-items:center}.stat .icon{font-size:17px}.stat b{display:block;margin-top:8px;font-size:25px;line-height:1;color:var(--g)}.stat span{display:block;margin-top:6px;color:var(--muted);font-size:10px;font-weight:800}.sales{border-left:3px solid var(--g)}.sales b{font-size:21px}
+.toolbar{background:#fff;border:1px solid var(--line);border-radius:17px;padding:11px;margin-bottom:16px;box-shadow:0 5px 20px rgba(18,70,55,.035)}
+.filters{display:grid;grid-template-columns:1.6fr .9fr .9fr auto auto;gap:7px}.field{border:1px solid #d7e4dd;border-radius:10px;background:#fff;padding:10px 11px;color:#29483d;font-size:11px;outline:0;min-width:0}.field:focus{border-color:#77bea6;box-shadow:0 0 0 3px rgba(22,163,111,.08)}
+.btn{border:0;border-radius:10px;padding:10px 12px;font-size:10.5px;font-weight:900}.primary{background:#12a16d;color:#fff}.neutral{background:#eef3f1;color:#2b5548;border:1px solid #d9e5df}
+.toolbar-note{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;color:#81918a;font-size:9px}.count{font-weight:900;color:#45665a}
+.order-card{background:#fff;border:1px solid #dfe9e4;border-radius:20px;padding:16px;margin:13px 0;box-shadow:0 8px 28px rgba(18,70,55,.055);position:relative;overflow:hidden}.order-card.new{border-color:#f1d29b;box-shadow:0 9px 30px rgba(180,122,20,.09)}.order-card.new:before{content:"NUEVO";position:absolute;right:-31px;top:15px;transform:rotate(42deg);background:var(--orange);color:#fff;padding:5px 36px;font-size:8px;font-weight:1000;letter-spacing:.7px}
+.order-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid #edf2ef}.order-id{font-size:16px;font-weight:1000;color:#08624f}.order-time{margin-top:3px;color:var(--muted);font-size:9px}.badges{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}.pill{padding:6px 9px;border-radius:99px;font-size:8.8px;font-weight:1000}.st-new{background:#fff2db;color:#965a00}.st-ok{background:#e9f8ef;color:#11724c}.st-prep{background:#eaf0ff;color:#355fae}.st-ready{background:#f2ecff;color:#674aa7}.st-route{background:#e8f7ff;color:#176f99}.st-done{background:#e8f7ec;color:#24743e}.st-cancel{background:#ffeded;color:#a83d3d}.pay-wait{background:#fff4dc;color:#966000}.pay-ok{background:#e7f7ed;color:#18764c}.pay-bad{background:#ffeded;color:#a83a3a}.pay-cash{background:#eef0f3;color:#4c5964}
+.payment-alert{display:flex;align-items:center;gap:9px;margin:12px 0 0;padding:10px 11px;border-radius:12px;background:#fff7e7;border:1px solid #f3dcae;color:#8c5d09;font-size:12px}.payment-alert b{display:block;font-size:10px}.payment-alert span{display:block;margin-top:3px;font-size:9px;color:#9b7a3b}
+.order-main{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0}.customer{display:flex;align-items:center;gap:10px;min-width:0}.avatar{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#0d8b6d,#18b67e);display:grid;place-items:center;color:#fff;font-size:17px;font-weight:1000;box-shadow:0 6px 15px rgba(13,139,109,.16)}.customer-info{min-width:0}.eyebrow{font-size:8px;font-weight:1000;color:#899a93;letter-spacing:.8px}.customer strong{display:block;margin-top:2px;font-size:13px}.muted{margin-top:3px;color:var(--muted);font-size:9.5px}.phone-line{margin-top:4px;color:#80908a;font-size:9px}.wa{display:inline-block;margin-left:4px;color:#168c5f;font-weight:900}
+.pricebox{min-width:95px;padding:10px 12px;text-align:right;border-radius:13px;background:#effaf5;border:1px solid #d9eee3}.price{margin-top:3px;font-size:18px;font-weight:1000;color:#0b765b}
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.detail{display:flex;gap:8px;padding:10px;border:1px solid #e7efeb;background:#fafcfb;border-radius:12px;min-width:0}.detail>span{font-size:16px;line-height:1}.detail small{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.45px;font-weight:900;color:#82928c}.detail b{display:block;margin-top:4px;font-size:10px;line-height:1.35;word-break:break-word}
+.timeline{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:14px 0 3px;padding:11px 8px;background:#f8faf9;border:1px solid #edf2ef;border-radius:13px}.tl-step{position:relative;text-align:center;color:#a0aaa5}.tl-step:not(:last-child):after{content:"";position:absolute;top:9px;right:-3px;width:100%;height:2px;background:#e6ece8;z-index:0}.tl-step span{position:relative;z-index:1;width:19px;height:19px;margin:auto;display:grid;place-items:center;border-radius:50%;background:#e7ece9;color:#7c8b85;font-size:8px;font-weight:1000;border:2px solid #f8faf9}.tl-step small{display:block;margin-top:5px;font-size:7px;line-height:1.2}.tl-step.done,.tl-step.active{color:var(--g);font-weight:900}.tl-step.done span,.tl-step.active span{background:var(--g);color:#fff;border-color:var(--g)}.tl-step.done:after{background:#71c6a6}.tl-step.active small{color:var(--g)}.cancel-state{margin:12px 0 2px;padding:10px 11px;border-radius:12px;background:#fff0f0;color:#a43b3b;border:1px solid #f1cccc;font-size:10px;font-weight:900}
+.card-actions{margin-top:13px;padding-top:12px;border-top:1px solid #edf2ef;display:grid;grid-template-columns:auto 1fr 1fr;gap:9px;align-items:end}.link-actions{display:flex;flex-direction:column;gap:7px}.receipt,.wa{display:block;text-align:center;padding:9px 10px;border-radius:10px;background:#f3f7f5;border:1px solid #dce7e1;font-size:9px;font-weight:1000;color:#376155}.link-actions .wa{margin-left:0}.card-actions label{display:block;margin-bottom:5px;font-size:8px;text-transform:uppercase;letter-spacing:.6px;font-weight:1000;color:#788a83}.control{display:flex;gap:6px}.control select{flex:1;min-width:0;border:1px solid #d6e3dc;border-radius:10px;padding:9px;background:#fff;font-size:10px;color:#26453a}.control .primary{white-space:nowrap}.btn.dark{background:var(--g);color:#fff}
+.empty{background:#fff;border:1px dashed #cfded6;border-radius:20px;padding:44px 20px;text-align:center;color:#6f827a}.empty-icon{font-size:32px}.empty h3{margin:9px 0 4px;color:#315247}.empty p{margin:0;font-size:11px}
+@media(max-width:950px){.stats{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:1fr 1fr 1fr}.filters .search{grid-column:1/-1}.filters .btn{min-height:39px}.detail-grid{grid-template-columns:repeat(2,1fr)}.card-actions{grid-template-columns:1fr}.link-actions{display:grid;grid-template-columns:1fr 1fr}.timeline{grid-template-columns:repeat(6,1fr)}}
+@media(max-width:620px){.topinner{padding:11px 12px}.top-actions a:first-child{display:none}.shell{padding:14px 10px 30px}.hero{align-items:flex-start;flex-direction:column}.hero h1{font-size:23px}.live{font-size:9px}.stats{grid-template-columns:repeat(2,1fr);gap:7px}.stat{padding:11px}.stat b{font-size:22px}.sales b{font-size:19px}.filters{grid-template-columns:1fr}.filters .search{grid-column:auto}.toolbar-note{align-items:flex-start;flex-direction:column}.order-card{padding:14px;border-radius:17px}.order-top{flex-direction:column}.badges{justify-content:flex-start}.order-main{align-items:flex-start}.pricebox{min-width:90px}.detail-grid{grid-template-columns:1fr 1fr}.timeline{gap:2px;padding:9px 4px}.tl-step small{font-size:6.5px}.card-actions{grid-template-columns:1fr}.link-actions{grid-template-columns:1fr 1fr}.control{flex-direction:column}}
 </style>
 </head>
 <body>
 <header class="topbar">
   <div class="topinner">
     <div class="brandmark">🌿</div>
-    <div class="brandtext">
-      <b>Punto Verde Express</b>
-      <span>Panel de pedidos · Menús & Parrillas</span>
-    </div>
-    <div class="top-actions">
-      <a href="/demo" target="_blank">👁️ Ver demo</a>
-      <a href="/admin?key={html.escape(ADMIN_KEY)}">↻ Actualizar</a>
-    </div>
+    <div class="brandtext"><b>Punto Verde Express</b><span>Panel de gestión de pedidos</span></div>
+    <div class="top-actions"><a href="/demo">🤖 Bot</a><a href="/">🌐 Página</a><a href="/admin?key=__KEY__">↻ Actualizar</a></div>
   </div>
 </header>
 
-<main class="wrap">
+<main class="shell">
   <section class="hero">
-    <div>
-      <h1>Gestión de pedidos</h1>
-      <p>Controla pedidos, pagos y entregas desde un solo lugar.</p>
-    </div>
-    <div class="live">Sistema operativo</div>
+    <div><h1>Centro de pedidos</h1><p>Controla pedidos, pagos y entregas desde un solo lugar.</p></div>
+    <div class="live">Panel activo</div>
   </section>
 
   <section class="stats">
-    <div class="stat"><div class="icon">🧾</div><b>{total}</b><span>Pedidos registrados</span></div>
-    <div class="stat"><div class="icon">🆕</div><b>{nuevos}</b><span>Pedidos nuevos</span></div>
-    <div class="stat"><div class="icon">📱</div><b>{yapes}</b><span>Yapes por verificar</span></div>
-    <div class="stat"><div class="icon">🛵</div><b>{en_ruta}</b><span>En camino</span></div>
-    <div class="stat"><div class="icon">✅</div><b>{entregados}</b><span>Entregados</span></div>
+    <div class="stat"><div class="top"><span class="icon">🧾</span></div><b>__TOTAL__</b><span>Pedidos registrados</span></div>
+    <div class="stat"><div class="top"><span class="icon">🆕</span></div><b>__NUEVOS__</b><span>Pedidos nuevos</span></div>
+    <div class="stat"><div class="top"><span class="icon">📱</span></div><b>__YAPES__</b><span>Yapes por verificar</span></div>
+    <div class="stat"><div class="top"><span class="icon">🛵</span></div><b>__RUTA__</b><span>Pedidos en camino</span></div>
+    <div class="stat sales"><div class="top"><span class="icon">💰</span></div><b>__VENTAS_HOY__</b><span>Ventas no canceladas de hoy</span></div>
   </section>
 
-  <section class="tools">
-    <form class="search" method="get">
-      <input type="hidden" name="key" value="{html.escape(ADMIN_KEY)}">
-      <input name="q" value="{html.escape(q)}" placeholder="🔎 Buscar por pedido, cliente, plato o dirección">
-      <button class="btn primary">Buscar</button>
+  <section class="toolbar">
+    <form method="get" class="filters">
+      <input type="hidden" name="key" value="__KEY__">
+      <input class="field search" name="q" value="__Q__" placeholder="🔎 Buscar pedido, cliente, plato, teléfono o dirección">
+      <select class="field" name="status">__STATUS_OPTIONS__</select>
+      <select class="field" name="pay">__PAY_OPTIONS__</select>
+      <button class="btn primary" type="submit">Filtrar</button>
+      <a class="btn neutral" href="/admin?key=__KEY__">Limpiar</a>
     </form>
+    <div class="toolbar-note"><span>Mostrando <b class="count">__MOSTRANDO__</b> pedidos de la lista reciente.</span><span>Actualización automática cada 45 s.</span></div>
   </section>
 
-  {cards_html}
+  __CARDS__
 </main>
+
+<script>
+setInterval(function(){ if(!document.hidden){ location.reload(); } },45000);
+</script>
 </body>
-</html>'''
+</html>"""
+
+    page=page.replace('__KEY__',key)
+    page=page.replace('__TOTAL__',str(total))
+    page=page.replace('__NUEVOS__',str(nuevos))
+    page=page.replace('__YAPES__',str(yapes))
+    page=page.replace('__RUTA__',str(en_ruta))
+    page=page.replace('__VENTAS_HOY__',money(hoy))
+    page=page.replace('__Q__',html.escape(request.args.get('q') or ''))
+    page=page.replace('__STATUS_OPTIONS__',status_options)
+    page=page.replace('__PAY_OPTIONS__',pay_options)
+    page=page.replace('__MOSTRANDO__',str(len(cards)))
+    page=page.replace('__CARDS__',cards_html)
+
     return page
 
 @app.post('/admin/order/<int:order_id>')
