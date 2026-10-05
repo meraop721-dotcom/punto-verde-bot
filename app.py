@@ -110,212 +110,187 @@ DEMO='''<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#075e54">
+<meta name="theme-color" content="#0b6b56">
 <title>Punto Verde Express · Demo</title>
 <style>
 :root{
-  --green:#075e54;
-  --green2:#0b7d66;
-  --accent:#16a36f;
-  --lime:#dff6e8;
-  --paper:#ffffff;
-  --bg:#eef5f1;
-  --ink:#173129;
-  --muted:#6f817a;
-  --line:#dce8e1;
-  --orange:#f59e0b;
+  --green:#0b6b56;--green2:#0e8a6d;--accent:#f59e0b;--ink:#17362d;--muted:#70837b;
+  --bg:#edf4f0;--paper:#fff;--line:#dce9e2;--soft:#eef9f4;--dark:#0d4135;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;
-  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   color:var(--ink);
   background:
-    radial-gradient(circle at 10% 10%,#dff3e9 0,transparent 26%),
-    radial-gradient(circle at 90% 85%,#fdeed5 0,transparent 24%),
-    #edf3f0;
+    radial-gradient(circle at 8% 10%,rgba(11,107,86,.12),transparent 24%),
+    radial-gradient(circle at 92% 88%,rgba(245,158,11,.10),transparent 20%),
+    linear-gradient(180deg,#f9fbfa,#edf4f0);
 }
-.shell{
-  min-height:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
+button,input{font:inherit}
+button{cursor:pointer}
+.page{min-height:100%;padding:24px;display:flex;justify-content:center;align-items:center}
+.layout{width:min(1180px,100%);display:grid;grid-template-columns:minmax(320px,1fr) 470px;gap:22px}
+.showcase{
+  min-height:770px;border-radius:30px;padding:32px;overflow:hidden;position:relative;
+  background:linear-gradient(145deg,#073f35 0%,#0b6b56 58%,#139574 100%);
+  color:#fff;box-shadow:0 26px 70px rgba(10,78,61,.19);
 }
+.showcase:before,.showcase:after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+.showcase:before{width:340px;height:340px;right:-145px;top:-135px;background:rgba(255,255,255,.08)}
+.showcase:after{width:260px;height:260px;left:-150px;bottom:-120px;background:rgba(245,158,11,.09)}
+.brandline{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
+.brandmark{width:52px;height:52px;border-radius:17px;background:#fff;display:grid;place-items:center;font-size:27px;box-shadow:0 10px 22px rgba(0,0,0,.14)}
+.brandname{font-size:18px;font-weight:900}.brandmeta{font-size:11px;color:rgba(255,255,255,.68);margin-top:3px}
+.hero{position:relative;z-index:1;margin-top:44px;max-width:620px}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.16);font-size:10px;font-weight:900;letter-spacing:.55px}
+.dot{width:7px;height:7px;border-radius:50%;background:#9ff2c5;box-shadow:0 0 0 4px rgba(159,242,197,.13)}
+.hero h2{font-size:47px;line-height:1.01;letter-spacing:-1.7px;margin:17px 0 13px}
+.hero p{font-size:14.5px;line-height:1.55;color:rgba(255,255,255,.82);max-width:570px;margin:0}
+.cta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.cta{border:0;border-radius:13px;padding:12px 15px;font-size:12px;font-weight:900;background:#fff;color:var(--green);box-shadow:0 8px 22px rgba(0,0,0,.13)}
+.cta.alt{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.18);box-shadow:none}
+.show-card{position:relative;z-index:1;margin-top:34px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.15);border-radius:23px;padding:17px}
+.show-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px}
+.show-head strong{font-size:12px;letter-spacing:.5px;text-transform:uppercase}
+.show-head span{font-size:9.5px;color:rgba(255,255,255,.62)}
+.week{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.day{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.11);border-radius:14px;padding:11px;min-height:102px}
+.day b{font-size:10px;display:block;color:#baf4d7}.day strong{display:block;margin-top:8px;font-size:11px;line-height:1.25}.day small{display:block;color:rgba(255,255,255,.60);font-size:9px;margin-top:5px;line-height:1.25}
+.sat{
+  margin-top:10px;padding:13px 14px;border-radius:15px;background:linear-gradient(90deg,rgba(245,158,11,.20),rgba(255,255,255,.08));
+  border:1px solid rgba(245,190,85,.24);display:flex;justify-content:space-between;align-items:center;gap:12px
+}
+.sat b{display:block;font-size:11px}.sat span{display:block;margin-top:3px;font-size:9.5px;color:rgba(255,255,255,.67)}
+.sat strong{font-size:11px;white-space:nowrap;color:#ffe4a5}
+.benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px}
+.benefit{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);border-radius:14px;padding:11px}
+.benefit b{display:block;font-size:10.5px}.benefit span{display:block;margin-top:4px;font-size:9px;line-height:1.35;color:rgba(255,255,255,.62)}
+.show-footer{position:absolute;left:32px;right:32px;bottom:25px;display:flex;justify-content:space-between;gap:10px;color:rgba(255,255,255,.58);font-size:9px}
 .phone{
-  width:min(100%,460px);
-  height:min(850px,calc(100vh - 40px));
-  background:#fff;
-  border-radius:28px;
-  overflow:hidden;
-  box-shadow:0 22px 70px rgba(18,60,47,.22);
-  display:flex;
-  flex-direction:column;
-  border:1px solid rgba(255,255,255,.8);
+  height:min(790px,calc(100vh - 48px));min-height:650px;
+  background:#fff;border:1px solid rgba(16,70,55,.10);border-radius:30px;overflow:hidden;
+  box-shadow:0 26px 70px rgba(20,71,57,.16);display:flex;flex-direction:column;
 }
-.top{
-  background:linear-gradient(135deg,#064e45,#08745f);
-  color:#fff;
-  padding:15px 16px 13px;
-  box-shadow:0 4px 18px rgba(0,0,0,.13);
-  position:relative;
-  z-index:3;
-}
-.brandrow{display:flex;align-items:center;gap:12px}
-.logo{
-  width:48px;height:48px;border-radius:50%;
-  background:#fff;
-  display:grid;place-items:center;
-  box-shadow:0 4px 14px rgba(0,0,0,.15);
-  flex:0 0 auto;
-}
-.logo svg{width:31px;height:31px}
-.brand{min-width:0;flex:1}
-.brand h1{font-size:17px;line-height:1.1;margin:0;font-weight:800;letter-spacing:.1px}
-.sub{display:flex;align-items:center;gap:6px;font-size:12px;opacity:.9;margin-top:5px}
-.dot{width:7px;height:7px;background:#9ff2c5;border-radius:50%;box-shadow:0 0 0 3px rgba(159,242,197,.14)}
-.reset{
-  border:1px solid rgba(255,255,255,.24);
-  color:#fff;background:rgba(255,255,255,.11);
-  border-radius:12px;padding:9px 11px;font-size:12px;font-weight:700;cursor:pointer
-}
-.info{
-  display:flex;gap:8px;overflow:auto;
-  padding:9px 12px;background:#fff;border-bottom:1px solid var(--line);
-  scrollbar-width:none
-}
+.top{background:linear-gradient(135deg,#064f43,#0b765f);color:#fff;padding:15px 16px 13px}
+.brandrow{display:flex;align-items:center;gap:10px}
+.logo{width:43px;height:43px;border-radius:14px;background:#fff;display:grid;place-items:center;font-size:22px;flex:0 0 auto}
+.brand{min-width:0;flex:1}.brand h1{margin:0;font-size:16px;font-weight:900}.sub{font-size:10px;opacity:.80;margin-top:3px}
+.status{width:6px;height:6px;display:inline-block;border-radius:50%;background:#9ff2c5;margin-right:4px}
+.reset{border:1px solid rgba(255,255,255,.19);background:rgba(255,255,255,.10);color:#fff;border-radius:10px;padding:8px 10px;font-size:10px;font-weight:800}
+.info{display:flex;gap:6px;overflow:auto;padding:9px 10px;border-bottom:1px solid var(--line);scrollbar-width:none;background:#fff}
 .info::-webkit-scrollbar{display:none}
-.chip{
-  white-space:nowrap;border:1px solid #dbeae3;background:#f7fbf9;color:#33584c;
-  border-radius:999px;padding:7px 10px;font-size:11px;font-weight:700
-}
-.chat{
-  flex:1;
-  min-height:0;
-  overflow:auto;
-  padding:16px 13px 18px;
-  background-color:#eef3f0;
-  background-image:radial-gradient(#d7e5de 1px,transparent 1px);
-  background-size:18px 18px;
-  scroll-behavior:smooth;
-}
-.msgrow{display:flex;align-items:flex-end;gap:7px;margin:9px 0}
-.msgrow.me{justify-content:flex-end}
-.botavatar{
-  width:27px;height:27px;border-radius:50%;background:#fff;border:1px solid #d8e5df;
-  display:grid;place-items:center;font-size:14px;box-shadow:0 2px 7px rgba(0,0,0,.08);flex:0 0 auto
-}
-.bubble{
-  max-width:82%;
-  background:#fff;
-  border-radius:15px 15px 15px 5px;
-  padding:10px 12px 7px;
-  box-shadow:0 1px 2px rgba(0,0,0,.08);
-  font-size:14px;line-height:1.43;
-  word-break:break-word;
-}
-.me .bubble{
-  background:#d9fdd3;
-  border-radius:15px 15px 5px 15px
-}
-.meta{margin-top:5px;color:#80918a;font-size:9.5px;text-align:right}
-.typing{
-  display:none;align-items:center;gap:5px;background:#fff;border-radius:14px 14px 14px 5px;
-  padding:11px 13px;width:max-content;box-shadow:0 1px 2px rgba(0,0,0,.08);margin:8px 0 8px 34px
-}
-.typing span{width:6px;height:6px;border-radius:50%;background:#8aa198;animation:b 1.1s infinite}
-.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+.tag{white-space:nowrap;border:1px solid #dbe9e2;background:#f8fbfa;color:#315b4e;border-radius:999px;padding:7px 9px;font-size:10px;font-weight:900}
+.chat{flex:1;min-height:0;overflow:auto;padding:14px 11px;background:#edf3ef;background-image:radial-gradient(#d6e4dc 1px,transparent 1px);background-size:18px 18px}
+.msgrow{display:flex;align-items:flex-end;gap:6px;margin:8px 0}.msgrow.me{justify-content:flex-end}
+.botavatar{width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid #d9e5df;display:grid;place-items:center;font-size:13px;box-shadow:0 2px 7px rgba(0,0,0,.07);flex:0 0 auto}
+.bubble{max-width:84%;background:#fff;border-radius:15px 15px 15px 5px;padding:9px 11px 7px;box-shadow:0 1px 2px rgba(0,0,0,.08);font-size:13px;line-height:1.43;word-break:break-word}
+.me .bubble{background:#d9fdd3;border-radius:15px 15px 5px 15px}
+.meta{margin-top:4px;color:#82928b;font-size:8.5px;text-align:right}
+.typing{display:none;align-items:center;gap:4px;background:#fff;border-radius:13px 13px 13px 5px;padding:10px 12px;width:max-content;box-shadow:0 1px 2px rgba(0,0,0,.08);margin:6px 0 7px 32px}
+.typing span{width:6px;height:6px;border-radius:50%;background:#899a92;animation:b 1.1s infinite}.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
 @keyframes b{0%,70%,100%{transform:translateY(0);opacity:.4}35%{transform:translateY(-4px);opacity:1}}
-.quick{
-  display:flex;gap:7px;overflow:auto;padding:9px 10px;background:#f8fbf9;border-top:1px solid var(--line);
-  scrollbar-width:none
-}
+.quick{display:flex;gap:6px;overflow:auto;padding:9px 9px;background:#fafcfb;border-top:1px solid var(--line);scrollbar-width:none}
 .quick::-webkit-scrollbar{display:none}
-.quick button{
-  white-space:nowrap;border:1px solid #cfe3d9;background:#fff;color:#17634f;border-radius:999px;
-  padding:8px 11px;font-size:12px;font-weight:800;cursor:pointer
-}
-.composer{
-  display:flex;align-items:center;gap:8px;padding:10px;
-  background:#fff;border-top:1px solid var(--line);
-  padding-bottom:max(10px,env(safe-area-inset-bottom));
-  position:relative;z-index:10;flex:0 0 auto
-}
-.textwrap{
-  flex:1;display:flex;align-items:center;background:#f3f6f5;border:1px solid #e2ebe6;border-radius:22px;padding:0 5px 0 12px
-}
-.textwrap input[type=text]{
-  flex:1;border:0;outline:0;background:transparent;padding:12px 5px;
-  font-size:16px;min-width:0;color:#1e352d;display:block;
-  -webkit-user-select:text;user-select:text;touch-action:manipulation
-}
-.camera{
-  width:38px;height:38px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
-  color:#49665c;font-size:17px
-}
+.quick button{white-space:nowrap;border:1px solid #cfe3d9;background:#fff;color:#16634f;border-radius:999px;padding:8px 10px;font-size:10px;font-weight:900}
+.composer{display:flex;align-items:center;gap:7px;padding:9px 9px;background:#fff;border-top:1px solid var(--line);padding-bottom:max(9px,env(safe-area-inset-bottom))}
+.textwrap{flex:1;display:flex;align-items:center;background:#f3f6f5;border:1px solid #e0e9e5;border-radius:21px;padding:0 4px 0 9px}
+.textwrap input[type=text]{flex:1;border:0;outline:0;background:transparent;padding:11px 5px;font-size:15px;min-width:0;color:#1e352d;display:block;-webkit-user-select:text;user-select:text;touch-action:manipulation}
+.camera{width:33px;height:33px;display:grid;place-items:center;color:#49665c;font-size:16px;cursor:pointer}
 #f{display:none}
-.send{
-  width:42px;height:42px;border-radius:50%;border:0;background:linear-gradient(135deg,#15a06c,#08745f);
-  color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 5px 13px rgba(8,116,95,.24);font-size:17px
+.send{width:40px;height:40px;border-radius:50%;border:0;background:linear-gradient(135deg,#15a06c,#08745f);color:#fff;display:grid;place-items:center;font-size:16px;box-shadow:0 5px 13px rgba(8,116,95,.24)}
+.phone-footer{text-align:center;padding:6px 9px;color:#91a099;background:#fff;border-top:1px solid #eef2ef;font-size:8.5px}
+@media(max-width:930px){
+  .page{padding:14px}.layout{grid-template-columns:1fr;max-width:500px}.showcase{display:none}
+  .phone{height:calc(100vh - 28px);min-height:0;border-radius:26px}
 }
-.badge{
-  position:absolute;right:15px;bottom:-10px;background:#fff;color:#0b6d59;padding:5px 9px;border-radius:999px;
-  font-size:10px;font-weight:800;box-shadow:0 3px 11px rgba(0,0,0,.12)
-}
-@media(max-width:520px){
-  .shell{padding:0}
-  .phone{width:100%;height:100vh;border-radius:0}
-}
+@media(max-width:520px){.page{padding:0}.phone{height:100vh;border-radius:0}}
 </style>
 </head>
 <body>
-<div class="shell">
-  <main class="phone">
-    <header class="top">
-      <div class="brandrow">
-        <div class="logo" aria-label="Logo Punto Verde Express">
-          <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
-            <path d="M32 54C20 48 13 39 13 28c0-8 5-15 13-18 2 8 6 13 12 17-2-8 0-15 7-21 6 5 9 12 8 20-1 15-10 24-21 28Z" fill="#13a16d"/>
-            <path d="M30 49c1-12 6-22 16-30" fill="none" stroke="#075e54" stroke-width="4" stroke-linecap="round"/>
-            <path d="M25 37c7 0 12 2 16 7" fill="none" stroke="#f3a712" stroke-width="4" stroke-linecap="round"/>
-          </svg>
+<div class="page">
+  <div class="layout">
+    <section class="showcase">
+      <div>
+        <div class="brandline">
+          <div class="brandmark">🌿</div>
+          <div><div class="brandname">Punto Verde Express</div><div class="brandmeta">Menús & Parrillas · Guadalupe y Chepén</div></div>
         </div>
-        <div class="brand">
-          <h1>Punto Verde Express</h1>
-          <div class="sub"><span class="dot"></span> Prototipo funcional · En línea</div>
-        </div>
-        <button class="reset" onclick="resetChat()">↻ Reiniciar</button>
-      </div>
-      <div class="badge">Menús & Parrillas</div>
-    </header>
 
-    <section class="info">
-      <span class="chip">🍽️ Menú referencial S/ 12</span>
-      <span class="chip">🛵 Delivery Guadalupe / Chepén</span>
-      <span class="chip">💳 Yape o efectivo</span>
-      <span class="chip">📦 Seguimiento</span>
+        <div class="hero">
+          <span class="eyebrow"><span class="dot"></span> EXPERIENCIA DE PEDIDO RÁPIDO</span>
+          <h2>Comida que se adapta a tu día.</h2>
+          <p>Consulta el menú, elige tu plato, confirma el precio y recibe tu pedido por un flujo sencillo. Una propuesta con sabores caseros y criollos y una parrilla especial los sábados.</p>
+          <div class="cta-row">
+            <button class="cta" onclick="quick('1')">🍽️ Ver menú de hoy</button>
+            <button class="cta alt" onclick="quick('2')">🛒 Pedir ahora</button>
+          </div>
+        </div>
+
+        <div class="show-card">
+          <div class="show-head"><strong>Así se verá nuestra semana</strong><span>Precio referencial de demo · S/ 12</span></div>
+          <div class="week">
+            <div class="day"><b>LUN</b><strong>Arroz con pollo</strong><small>Ají de gallina</small></div>
+            <div class="day"><b>MAR</b><strong>Lomo saltado</strong><small>Milanesa de pollo</small></div>
+            <div class="day"><b>MIÉ</b><strong>Pescado frito</strong><small>Arroz chaufa</small></div>
+            <div class="day"><b>JUE</b><strong>Arroz con pato</strong><small>Pollo al horno</small></div>
+            <div class="day"><b>VIE</b><strong>Seco de cabrito</strong><small>Lomo saltado</small></div>
+          </div>
+          <div class="sat">
+            <div><b>🔥 ESPECIAL DEL SÁBADO</b><span>Pollo a la parrilla · Parrilla familiar · Chorizo + pollo + carne</span></div>
+            <strong>RESERVA</strong>
+          </div>
+          <div class="benefits">
+            <div class="benefit"><b>📱 WhatsApp</b><span>Consulta, pedido, confirmación y seguimiento.</span></div>
+            <div class="benefit"><b>🛵 Delivery</b><span>Opciones para Guadalupe y Chepén.</span></div>
+            <div class="benefit"><b>💳 Pago</b><span>Yape o efectivo, con total visible.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="show-footer"><span>💚 Tu almuerzo, sin perder tiempo.</span><span>Prototipo funcional del proyecto</span></div>
     </section>
 
-    <section id="c" class="chat" aria-live="polite"></section>
-    <div id="typing" class="typing"><span></span><span></span><span></span></div>
+    <main class="phone">
+      <header class="top">
+        <div class="brandrow">
+          <div class="logo">🌿</div>
+          <div class="brand">
+            <h1>Punto Verde Express</h1>
+            <div class="sub"><span class="status"></span>En línea · respuesta automática</div>
+          </div>
+          <button class="reset" onclick="resetChat()">↻ Reiniciar</button>
+        </div>
+      </header>
 
-    <section class="quick">
-      <button onclick="quick('1')">🍽️ Ver menú</button>
-      <button onclick="quick('2')">🛒 Hacer pedido</button>
-      <button onclick="quick('4')">📦 Mi pedido</button>
-      <button onclick="quick('5')">👤 Ayuda</button>
-    </section>
+      <section class="info">
+        <span class="tag">🍛 Menús L–V</span>
+        <span class="tag">🔥 Parrillas sábado</span>
+        <span class="tag">🛵 Delivery</span>
+        <span class="tag">💳 Yape / efectivo</span>
+      </section>
 
-    <footer class="composer" id="composer">
-      <div class="textwrap">
-        <label class="camera" for="f" title="Enviar comprobante">📷</label>
-        <input id="f" type="file" accept="image/*" onchange="img()">
-        <input id="i" type="text" autocomplete="off" placeholder="Escribe un mensaje...">
-      </div>
-      <button class="send" onclick="s()" title="Enviar">➤</button>
-    </footer>
-  </main>
+      <section id="c" class="chat" aria-live="polite"></section>
+      <div id="typing" class="typing"><span></span><span></span><span></span></div>
+
+      <section class="quick">
+        <button onclick="quick('1')">🍽️ Menú</button>
+        <button onclick="quick('2')">🛒 Pedir</button>
+        <button onclick="quick('3')">🔥 Parrillas</button>
+        <button onclick="quick('4')">📦 Seguimiento</button>
+        <button onclick="quick('5')">👤 Ayuda</button>
+      </section>
+
+      <footer class="composer">
+        <div class="textwrap">
+          <label class="camera" for="f" title="Enviar comprobante">📷</label>
+          <input id="f" type="file" accept="image/*" onchange="img()">
+          <input id="i" type="text" autocomplete="off" placeholder="Escribe un mensaje...">
+        </div>
+        <button class="send" onclick="s()" title="Enviar">➤</button>
+      </footer>
+      <div class="phone-footer">Punto Verde Express · Demo funcional para presentación</div>
+    </main>
+  </div>
 </div>
 
 <script>
@@ -425,6 +400,7 @@ resetChat();
 </script>
 </body>
 </html>'''
+
 
 def db():
     conn=sqlite3.connect(DB_PATH)
