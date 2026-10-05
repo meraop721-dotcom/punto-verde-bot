@@ -129,8 +129,9 @@ body{
 }
 button,input{font:inherit}
 button{cursor:pointer}
-.page{min-height:100%;padding:24px;display:flex;justify-content:center;align-items:center}
-.layout{width:min(1180px,100%);display:grid;grid-template-columns:minmax(320px,1fr) 470px;gap:22px}
+.page{min-height:100vh;padding:0;display:block}
+.layout{width:100%;min-height:100vh;display:block}
+.showcase{display:none}
 .showcase{
   min-height:770px;border-radius:30px;padding:32px;overflow:hidden;position:relative;
   background:linear-gradient(145deg,#073f35 0%,#0b6b56 58%,#139574 100%);
@@ -168,9 +169,9 @@ button{cursor:pointer}
 .benefit b{display:block;font-size:10.5px}.benefit span{display:block;margin-top:4px;font-size:9px;line-height:1.35;color:rgba(255,255,255,.62)}
 .show-footer{position:absolute;left:32px;right:32px;bottom:25px;display:flex;justify-content:space-between;gap:10px;color:rgba(255,255,255,.58);font-size:9px}
 .phone{
-  height:min(790px,calc(100vh - 48px));min-height:650px;
-  background:#fff;border:1px solid rgba(16,70,55,.10);border-radius:30px;overflow:hidden;
-  box-shadow:0 26px 70px rgba(20,71,57,.16);display:flex;flex-direction:column;
+  width:100%;max-width:none;height:100vh;min-height:0;
+  background:#fff;border:0;border-radius:0;overflow:hidden;
+  box-shadow:none;display:flex;flex-direction:column;
 }
 .top{background:linear-gradient(135deg,#064f43,#0b765f);color:#fff;padding:15px 16px 13px}
 .brandrow{display:flex;align-items:center;gap:10px}
@@ -200,56 +201,14 @@ button{cursor:pointer}
 #f{display:none}
 .send{width:40px;height:40px;border-radius:50%;border:0;background:linear-gradient(135deg,#15a06c,#08745f);color:#fff;display:grid;place-items:center;font-size:16px;box-shadow:0 5px 13px rgba(8,116,95,.24)}
 .phone-footer{text-align:center;padding:6px 9px;color:#91a099;background:#fff;border-top:1px solid #eef2ef;font-size:8.5px}
-@media(max-width:930px){
-  .page{padding:14px}.layout{grid-template-columns:1fr;max-width:500px}.showcase{display:none}
-  .phone{height:calc(100vh - 28px);min-height:0;border-radius:26px}
+@media(max-width:520px){
+  .phone{height:100dvh}
 }
-@media(max-width:520px){.page{padding:0}.phone{height:100vh;border-radius:0}}
 </style>
 </head>
 <body>
 <div class="page">
   <div class="layout">
-    <section class="showcase">
-      <div>
-        <div class="brandline">
-          <div class="brandmark">🌿</div>
-          <div><div class="brandname">Punto Verde Express</div><div class="brandmeta">Menús & Parrillas · Guadalupe y Chepén</div></div>
-        </div>
-
-        <div class="hero">
-          <span class="eyebrow"><span class="dot"></span> EXPERIENCIA DE PEDIDO RÁPIDO</span>
-          <h2>Comida que se adapta a tu día.</h2>
-          <p>Consulta el menú, elige tu plato, confirma el precio y recibe tu pedido por un flujo sencillo. Una propuesta con sabores caseros y criollos y una parrilla especial los sábados.</p>
-          <div class="cta-row">
-            <button class="cta" onclick="quick('1')">🍽️ Ver menú de hoy</button>
-            <button class="cta alt" onclick="quick('2')">🛒 Pedir ahora</button>
-          </div>
-        </div>
-
-        <div class="show-card">
-          <div class="show-head"><strong>Así se verá nuestra semana</strong><span>Precio referencial de demo · S/ 12</span></div>
-          <div class="week">
-            <div class="day"><b>LUN</b><strong>Arroz con pollo</strong><small>Ají de gallina</small></div>
-            <div class="day"><b>MAR</b><strong>Lomo saltado</strong><small>Milanesa de pollo</small></div>
-            <div class="day"><b>MIÉ</b><strong>Pescado frito</strong><small>Arroz chaufa</small></div>
-            <div class="day"><b>JUE</b><strong>Arroz con pato</strong><small>Pollo al horno</small></div>
-            <div class="day"><b>VIE</b><strong>Seco de cabrito</strong><small>Lomo saltado</small></div>
-          </div>
-          <div class="sat">
-            <div><b>🔥 ESPECIAL DEL SÁBADO</b><span>Pollo a la parrilla · Parrilla familiar · Chorizo + pollo + carne</span></div>
-            <strong>RESERVA</strong>
-          </div>
-          <div class="benefits">
-            <div class="benefit"><b>📱 WhatsApp</b><span>Consulta, pedido, confirmación y seguimiento.</span></div>
-            <div class="benefit"><b>🛵 Delivery</b><span>Opciones para Guadalupe y Chepén.</span></div>
-            <div class="benefit"><b>💳 Pago</b><span>Yape o efectivo, con total visible.</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="show-footer"><span>💚 Tu almuerzo, sin perder tiempo.</span><span>Prototipo funcional del proyecto</span></div>
-    </section>
-
     <main class="phone">
       <header class="top">
         <div class="brandrow">
