@@ -900,13 +900,21 @@ def web_week_html():
         out.append(f'<article class="dayCard"><div class="dayHead"><b>{html.escape(m["dia"].upper())}</b><span>Menú</span></div><strong>{html.escape(m["segundos"][0])}</strong><small>{html.escape(m["segundos"][1])} · {html.escape(m["segundos"][2])}</small></article>')
     return ''.join(out)
 
+def render_web_page():
+    day=datetime.now(TZ).weekday()
+    return render_template_string(WEBPAGE,today_html=web_menu_html(day),week_html=web_week_html())
+
 @app.get('/')
-def home(): return jsonify({'name':'Punto Verde Express Bot','status':'ok','page':'/pagina','demo':'/demo','meta_webhook':'/webhook','waia_webhook':'/waia-webhook'})
+def home():
+    return render_web_page()
 
 @app.get('/pagina')
 def pagina():
-    day=datetime.now(TZ).weekday()
-    return render_template_string(WEBPAGE,today_html=web_menu_html(day),week_html=web_week_html())
+    return render_web_page()
+
+@app.get('/api/status')
+def api_status():
+    return jsonify({'name':'Punto Verde Express Bot','status':'ok','page':'/','demo':'/demo','meta_webhook':'/webhook','waia_webhook':'/waia-webhook'})
 @app.get('/demo')
 def demo(): return render_template_string(DEMO)
 @app.post('/demo-message')
