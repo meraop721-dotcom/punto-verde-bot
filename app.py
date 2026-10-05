@@ -2,11 +2,12 @@ import os, json, sqlite3, hmac, hashlib, uuid, time, html
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import requests
-from flask import Flask, request, jsonify, Response, render_template_string
+from flask import Flask, request, jsonify, Response, render_template_string, session
 from dotenv import load_dotenv
 
 load_dotenv()
 app = Flask(__name__)
+app.secret_key=os.getenv('FLASK_SECRET_KEY','punto-verde-demo-secret')
 VERIFY_TOKEN=os.getenv('VERIFY_TOKEN','punto-verde-verificacion')
 ACCESS_TOKEN=os.getenv('WHATSAPP_ACCESS_TOKEN','')
 PHONE_NUMBER_ID=os.getenv('WHATSAPP_PHONE_NUMBER_ID','')
@@ -966,10 +967,55 @@ def waia_webhook():
         app.logger.exception(e)
     return Response('OK',200)
 
+
+def admin_authenticated():
+    key=request.args.get('key','')
+    if key and hmac.compare_digest(key,ADMIN_KEY):
+        session['admin_ok']=True
+    return bool(session.get('admin_ok'))
+
+@app.route('/admin/login',methods=['GET','POST'])
+def admin_login():
+    error=''
+    if request.method=='POST':
+        key=(request.form.get('key') or '').strip()
+        if key and hmac.compare_digest(key,ADMIN_KEY):
+            session['admin_ok']=True
+            return Response('<meta http-equiv="refresh" content="0;url=/admin">',200,mimetype='text/html')
+        error='Clave incorrecta. Intenta nuevamente.'
+    page=f'''<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#075e54">
+<title>Acceso · Punto Verde Express</title>
+<style>
+body{{margin:0;min-height:100vh;display:grid;place-items:center;background:linear-gradient(180deg,#f6faf8,#eaf2ee);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18342b;padding:18px}}
+.card{{width:min(390px,100%);background:#fff;border:1px solid #dce8e1;border-radius:24px;padding:28px;box-shadow:0 20px 50px rgba(18,70,55,.10)}}
+.mark{{width:54px;height:54px;border-radius:17px;background:linear-gradient(145deg,#075e54,#0f8d70);display:grid;place-items:center;color:#fff;font-size:28px;margin-bottom:18px}}
+h1{{font-size:23px;margin:0}}p{{color:#71837b;font-size:11px;line-height:1.5;margin:7px 0 20px}}
+label{{display:block;font-size:9px;font-weight:900;letter-spacing:.6px;color:#72857d;margin-bottom:6px;text-transform:uppercase}}
+input{{width:100%;box-sizing:border-box;border:1px solid #d5e2db;border-radius:12px;padding:12px;outline:0;font-size:14px}}
+input:focus{{border-color:#72bca2;box-shadow:0 0 0 3px rgba(18,161,109,.08)}}
+button{{width:100%;margin-top:11px;border:0;border-radius:12px;padding:12px;background:#075e54;color:#fff;font-weight:900}}
+.err{{margin:10px 0;padding:9px;border-radius:10px;background:#fff0f0;color:#a43a3a;font-size:10px;font-weight:800}}
+.back{{display:block;text-align:center;margin-top:14px;font-size:10px;color:#4e6d60;text-decoration:none}}
+</style>
+</head>
+<body><div class="card"><div class="mark">🌿</div><h1>Panel administrativo</h1><p>Ingresa la clave de administrador para gestionar pedidos y pagos de Punto Verde Express.</p>{('<div class="err">'+html.escape(error)+'</div>') if error else ''}<form method="post"><label>Clave de administrador</label><input type="password" name="key" autocomplete="current-password" placeholder="Ingresa tu clave" autofocus><button type="submit">Entrar al panel</button></form><a class="back" href="/">← Volver a la página</a></div></body>
+</html>'''
+    return page
+
+@app.get('/admin/logout')
+def admin_logout():
+    session.pop('admin_ok',None)
+    return Response('<meta http-equiv="refresh" content="0;url=/admin">',200,mimetype='text/html')
+
 @app.get('/admin')
 def admin_panel():
-    if request.args.get('key') != ADMIN_KEY:
-        return Response('Acceso no autorizado',403)
+    if not admin_authenticated():
+        return Response('<meta http-equiv="refresh" content="0;url=/admin/login">',200,mimetype='text/html')
 
     q=(request.args.get('q') or '').strip().lower()
     status_filter=(request.args.get('status') or '').strip()
@@ -1094,7 +1140,7 @@ def admin_panel():
         if d.get('pago')=='Yape' and d.get('comprobante_yape'):
             receipt=(
                 f'<a class="receipt" target="_blank" '
-                f'href="/admin/order/{oid}/receipt?key={html.escape(ADMIN_KEY)}">'
+                f'href="/admin/order/{oid}/receipt">'
                 '📸 Ver comprobante</a>'
             )
 
@@ -1196,7 +1242,6 @@ def admin_panel():
       </div>
     '''
 
-    key=html.escape(ADMIN_KEY)
     status_options='<option value="">Todos los estados</option>'+''.join(
         '<option value="'+html.escape(s)+'"'+(' selected' if s==status_filter else '')+'>'+html.escape(s)+'</option>'
         for s in allowed
@@ -1247,7 +1292,7 @@ a{text-decoration:none}.topbar{position:sticky;top:0;z-index:30;background:linea
   <div class="topinner">
     <div class="brandmark">🌿</div>
     <div class="brandtext"><b>Punto Verde Express</b><span>Panel de gestión de pedidos</span></div>
-    <div class="top-actions"><a href="/demo">🤖 Bot</a><a href="/">🌐 Página</a><a href="/admin?key=__KEY__">↻ Actualizar</a></div>
+    <div class="top-actions"><a href="/demo">🤖 Bot</a><a href="/">🌐 Página</a><a href="/admin">↻ Actualizar</a></div>
   </div>
 </header>
 
@@ -1286,7 +1331,6 @@ setInterval(function(){ if(!document.hidden){ location.reload(); } },45000);
 </body>
 </html>"""
 
-    page=page.replace('__KEY__',key)
     page=page.replace('__TOTAL__',str(total))
     page=page.replace('__NUEVOS__',str(nuevos))
     page=page.replace('__YAPES__',str(yapes))
@@ -1302,7 +1346,7 @@ setInterval(function(){ if(!document.hidden){ location.reload(); } },45000);
 
 @app.post('/admin/order/<int:order_id>')
 def admin_update_order(order_id):
-    if request.args.get('key') != ADMIN_KEY:
+    if not admin_authenticated():
         return Response('Acceso no autorizado',403)
     allowed=['Pedido recibido','Confirmado','En preparación','Listo para recojo','En camino','Entregado','Cancelado']
     status=request.form.get('status','')
@@ -1312,7 +1356,7 @@ def admin_update_order(order_id):
     order=get_order(order_id)
     if order:
         send_text(order[1],f'📦 Tu pedido #{order_id} ahora está: *{status}*.\nEscribe *4* para revisar el seguimiento.')
-    return Response('<meta http-equiv="refresh" content="0;url=/admin?key='+ADMIN_KEY+'">',200,mimetype='text/html')
+    return Response('<meta http-equiv="refresh" content="0;url=/admin">',200,mimetype='text/html')
 
 @app.post('/admin/order/<int:order_id>/payment')
 def admin_update_payment(order_id):
@@ -1333,7 +1377,7 @@ def admin_update_payment(order_id):
 
 @app.get('/admin/order/<int:order_id>/receipt')
 def admin_receipt(order_id):
-    if request.args.get('key') != ADMIN_KEY:
+    if not admin_authenticated():
         return Response('Acceso no autorizado',403)
     order=get_order(order_id)
     if not order:
