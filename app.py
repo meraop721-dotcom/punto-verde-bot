@@ -783,8 +783,130 @@ def signature_ok(raw,sig):
     expected=hmac.new(APP_SECRET.encode(),raw,hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected,sig.split('=',1)[1])
 
+
+WEBPAGE='''<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a6b56">
+<title>Punto Verde Express · Menús & Parrillas</title>
+<style>
+:root{--g:#0a6b56;--g2:#0e8b6e;--deep:#063e34;--lime:#c8f1d9;--orange:#f59e0b;--ink:#17372e;--muted:#6d8178;--bg:#f3f7f5;--card:#fff;--line:#e0ebe5}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#f9fcfa 0%,var(--bg) 100%)}
+a{text-decoration:none;color:inherit}button{font:inherit;cursor:pointer}
+.wrap{width:min(1120px,calc(100% - 28px));margin:auto}
+.nav{position:sticky;top:0;z-index:30;background:rgba(249,252,250,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(224,235,229,.85)}
+.navin{height:64px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:900}.logoMark{width:40px;height:40px;border-radius:13px;background:linear-gradient(145deg,var(--g),var(--g2));color:#fff;display:grid;place-items:center;font-size:21px;box-shadow:0 7px 18px rgba(10,107,86,.2)}
+.logo span{font-size:14px}.logo small{display:block;color:var(--muted);font-size:9px;font-weight:700;margin-top:2px}
+.navlinks{display:none;gap:20px;color:#416458;font-size:11px;font-weight:900}.navlinks a:hover{color:var(--g)}
+.navbtn{border:0;border-radius:11px;padding:10px 12px;background:var(--g);color:#fff;font-size:10.5px;font-weight:900}
+.hero{padding:34px 0 24px}.heroCard{position:relative;overflow:hidden;border-radius:28px;padding:30px 24px;background:linear-gradient(145deg,#063e34 0%,#0a6b56 58%,#129271 100%);color:#fff;box-shadow:0 22px 52px rgba(7,73,58,.16)}
+.heroCard:before,.heroCard:after{content:"";position:absolute;border-radius:50%;pointer-events:none}.heroCard:before{width:280px;height:280px;right:-120px;top:-125px;background:rgba(255,255,255,.08)}.heroCard:after{width:200px;height:200px;left:-130px;bottom:-120px;background:rgba(245,158,11,.10)}
+.eyebrow{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border-radius:99px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.15);font-size:9.5px;font-weight:900;letter-spacing:.5px}.live{width:7px;height:7px;border-radius:50%;background:#a5f2c8;box-shadow:0 0 0 4px rgba(165,242,200,.12)}
+h1{position:relative;z-index:1;font-size:clamp(34px,8vw,60px);line-height:.98;letter-spacing:-1.7px;margin:17px 0 12px;max-width:700px}.hero p{position:relative;z-index:1;max-width:650px;margin:0;color:rgba(255,255,255,.80);font-size:14px;line-height:1.55}
+.actions{position:relative;z-index:1;display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}.btn{border:0;border-radius:13px;padding:12px 15px;font-size:11.5px;font-weight:900}.btn.main{background:#fff;color:var(--g);box-shadow:0 8px 20px rgba(0,0,0,.12)}.btn.alt{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}
+.heroFacts{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:24px;max-width:560px}.fact{padding:12px;border-radius:15px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.11)}.fact b{display:block;font-size:11px}.fact span{display:block;margin-top:4px;font-size:9px;line-height:1.35;color:rgba(255,255,255,.65)}
+.section{padding:25px 0}.sectionTitle{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:13px}.sectionTitle h2{margin:0;font-size:22px;letter-spacing:-.5px}.sectionTitle p{margin:0;color:var(--muted);font-size:10px;line-height:1.4;text-align:right}
+.today{border:1px solid #d8e8e0;background:linear-gradient(135deg,#fff,#f4fbf7);border-radius:21px;padding:17px;box-shadow:0 12px 32px rgba(20,79,61,.07)}
+.todayTop{display:flex;justify-content:space-between;gap:12px;align-items:center}.pill{padding:7px 9px;border-radius:99px;background:var(--lime);color:#1f6b53;font-size:9px;font-weight:900}.price{font-size:18px;font-weight:1000;color:var(--g);white-space:nowrap}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:0 8px 24px rgba(20,79,61,.05)}.card h3{margin:0;font-size:13px}.card small{color:var(--muted);font-size:9px}
+.items{display:grid;gap:7px;margin-top:11px}.item{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:12px;background:#f5f9f7}.item strong{font-size:10.5px}.item span{color:var(--g);font-size:9px;font-weight:900}
+.cardBtn{width:100%;margin-top:11px;border:1px solid #cfe1d8;background:#fff;color:var(--g);border-radius:11px;padding:9px;font-size:10px;font-weight:900}
+.week{display:grid;grid-template-columns:1fr;gap:9px}.dayCard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.dayHead{display:flex;justify-content:space-between;align-items:center;gap:8px}.dayHead b{font-size:10px;color:var(--g);letter-spacing:.35px}.dayHead span{font-size:9px;color:var(--muted)}
+.dayCard strong{display:block;margin-top:9px;font-size:12px}.dayCard small{display:block;margin-top:4px;color:var(--muted);font-size:9.5px;line-height:1.4}
+.saturday{margin-top:10px;border-radius:18px;padding:16px;color:#fff;background:linear-gradient(135deg,#5a3910,#9a6110 70%,#c17d16);box-shadow:0 12px 28px rgba(133,83,12,.14)}.saturdayTop{display:flex;justify-content:space-between;gap:10px;align-items:center}.saturday h3{margin:0;font-size:14px}.saturday p{margin:4px 0 0;color:rgba(255,255,255,.70);font-size:9.5px}
+.satItems{display:grid;grid-template-columns:1fr;gap:7px;margin-top:12px}.satItem{padding:10px 11px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.09);border-radius:11px;font-size:10px;font-weight:900}
+.how{display:grid;grid-template-columns:1fr;gap:9px}.step{background:#fff;border:1px solid var(--line);border-radius:17px;padding:15px}.stepNo{width:28px;height:28px;border-radius:9px;background:#e7f6ee;color:var(--g);display:grid;place-items:center;font-size:11px;font-weight:1000}.step h3{margin:10px 0 5px;font-size:12px}.step p{margin:0;color:var(--muted);font-size:9.5px;line-height:1.45}
+.ctaBox{margin:8px 0 30px;border-radius:23px;padding:22px;background:linear-gradient(135deg,#073f35,#0b705a);color:#fff}.ctaBox h2{margin:0;font-size:22px}.ctaBox p{margin:7px 0 0;color:rgba(255,255,255,.72);font-size:10.5px;line-height:1.5}.ctaRow{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.footer{padding:18px 0 84px;border-top:1px solid var(--line);color:var(--muted);font-size:9px}.footIn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bottomBar{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:rgba(249,252,250,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;gap:8px}.bottomBar a{flex:1;text-align:center;border-radius:12px;padding:11px 8px;font-size:10px;font-weight:900;background:#fff;border:1px solid var(--line);color:var(--g)}.bottomBar a.main{background:var(--g);border-color:var(--g);color:#fff}
+@media(min-width:700px){
+ .wrap{width:min(1120px,calc(100% - 40px))}.navlinks{display:flex}.navbtn{display:none}.hero{padding-top:42px}.heroCard{padding:42px}.heroFacts{grid-template-columns:repeat(4,1fr);max-width:none}.grid2{grid-template-columns:1fr 1fr}.week{grid-template-columns:repeat(5,1fr)}.satItems{grid-template-columns:repeat(3,1fr)}.how{grid-template-columns:repeat(3,1fr)}.bottomBar{display:none}.footer{padding-bottom:25px}
+}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap navin">
+<a class="logo" href="#inicio"><div class="logoMark">🌿</div><div><span>Punto Verde Express</span><small>Menús & Parrillas</small></div></a>
+<nav class="navlinks"><a href="#menu">Menú</a><a href="#semana">Semana</a><a href="#parrillas">Sábado</a><a href="#como">Cómo funciona</a></nav>
+<a class="navbtn" href="/demo?action=pedido">Pedir ahora</a>
+</div></header>
+
+<main id="inicio">
+<section class="hero"><div class="wrap"><div class="heroCard">
+<span class="eyebrow"><span class="live"></span> PEDIDOS RÁPIDOS DESDE EL CELULAR</span>
+<h1>Tu almuerzo listo para elegir.</h1>
+<p>Consulta el menú, revisa las opciones, elige recojo o delivery y confirma tu pedido en pocos pasos.</p>
+<div class="actions"><a class="btn main" href="/demo?action=pedido">🛒 Pedir ahora</a><a class="btn alt" href="#menu">🍛 Ver menú</a></div>
+<div class="heroFacts">
+<div class="fact"><b>🍛 Casero + criollo</b><span>Rotación semanal de platos.</span></div>
+<div class="fact"><b>🛵 Delivery</b><span>Guadalupe y Chepén.</span></div>
+<div class="fact"><b>💳 Yape / efectivo</b><span>Pago durante el pedido.</span></div>
+<div class="fact"><b>📦 Seguimiento</b><span>Consulta el estado de tu pedido.</span></div>
+</div>
+</div></div></section>
+
+<section id="menu" class="section"><div class="wrap">
+<div class="sectionTitle"><div><h2>Menú de hoy</h2><p style="text-align:left">Opciones actualizadas por día.</p></div><span class="pill">Precio referencial · S/ 12</span></div>
+<div class="today">{{ today_html|safe }}</div>
+</div></section>
+
+<section id="semana" class="section"><div class="wrap">
+<div class="sectionTitle"><div><h2>La semana en un vistazo</h2></div><p>Entradas + segundos<br>según el día.</p></div>
+<div class="week">{{ week_html|safe }}</div>
+</div></section>
+
+<section id="parrillas" class="section"><div class="wrap"><div class="saturday">
+<div class="saturdayTop"><div><h3>🔥 Sábado de parrillas</h3><p>Una propuesta especial para compartir.</p></div><span class="pill">Reserva</span></div>
+<div class="satItems"><div class="satItem">🍗 Pollo a la parrilla</div><div class="satItem">🥩 Parrilla familiar</div><div class="satItem">🔥 Chorizo + pollo + carne</div></div>
+<div class="ctaRow"><a class="btn main" href="/demo?action=pedido">Reservar / pedir</a></div>
+</div></div></section>
+
+<section id="como" class="section"><div class="wrap">
+<div class="sectionTitle"><div><h2>Así funciona</h2></div><p>Simple, rápido y pensado para el celular.</p></div>
+<div class="how">
+<div class="step"><div class="stepNo">01</div><h3>Consulta</h3><p>Revisa el menú del día y las opciones disponibles.</p></div>
+<div class="step"><div class="stepNo">02</div><h3>Elige</h3><p>Selecciona entrada, segundo, modalidad, hora y forma de pago.</p></div>
+<div class="step"><div class="stepNo">03</div><h3>Confirma</h3><p>Recibe tu número de pedido y consulta su estado cuando quieras.</p></div>
+</div></div></section>
+
+<section class="section"><div class="wrap"><div class="ctaBox">
+<h2>¿Listo para hacer tu pedido?</h2><p>La página te lleva directamente al bot funcional de Punto Verde Express para completar la compra.</p>
+<div class="ctaRow"><a class="btn main" href="/demo?action=pedido">🛒 Hacer pedido</a><a class="btn alt" href="/demo?action=seguimiento">📦 Ver pedido</a></div>
+</div></div></section>
+</main>
+
+<footer class="footer"><div class="wrap footIn"><span>🌿 Punto Verde Express · Guadalupe y Chepén</span><span>Prototipo funcional del proyecto académico</span></div></footer>
+<div class="bottomBar"><a href="#menu">🍛 Menú</a><a class="main" href="/demo?action=pedido">🛒 Pedir ahora</a><a href="/demo?action=seguimiento">📦 Seguimiento</a></div>
+</body>
+</html>'''
+
+def web_menu_html(day):
+    if day in MENUS:
+        m=MENUS[day]
+        entradas=''.join(f'<div class="item"><strong>{html.escape(x)}</strong><span>Entrada</span></div>' for x in m["entradas"])
+        segundos=''.join(f'<div class="item"><strong>{html.escape(x)}</strong><span>Segundo</span></div>' for x in m["segundos"])
+        return f'<div class="todayTop"><div><span class="pill">{html.escape(m["dia"].upper())}</span><h3 style="margin:10px 0 0;font-size:18px">Opciones disponibles</h3></div><div class="price">S/ 12</div></div><div class="grid2"><div class="card"><h3>🥣 Entradas</h3><small>Elige 1</small><div class="items">{entradas}</div></div><div class="card"><h3>🍛 Segundos</h3><small>Elige 1</small><div class="items">{segundos}</div></div></div><button class="cardBtn" onclick="location.href=\\'/demo?action=pedido\\'">🛒 Pedir este menú</button>'
+    if day==5:
+        return '<div class="todayTop"><div><span class="pill">SÁBADO</span><h3 style="margin:10px 0 0;font-size:18px">Hoy tenemos parrillas 🔥</h3></div><div class="price">Reserva</div></div><div class="grid2"><div class="card"><h3>🍗 Pollo a la parrilla</h3><small>Especial del sábado</small></div><div class="card"><h3>🥩 Parrilla familiar</h3><small>Para compartir</small></div></div><button class="cardBtn" onclick="location.href=\\'/demo?action=pedido\\'">🔥 Reservar / pedir</button>'
+    return '<div class="todayTop"><div><span class="pill">DOMINGO</span><h3 style="margin:10px 0 0;font-size:18px">Hoy no hay atención programada.</h3></div></div><p style="color:var(--muted);font-size:10px;margin:10px 0 0">Vuelve el lunes para consultar el nuevo menú.</p>'
+
+def web_week_html():
+    out=[]
+    for day,m in MENUS.items():
+        out.append(f'<article class="dayCard"><div class="dayHead"><b>{html.escape(m["dia"].upper())}</b><span>Menú</span></div><strong>{html.escape(m["segundos"][0])}</strong><small>{html.escape(m["segundos"][1])} · {html.escape(m["segundos"][2])}</small></article>')
+    return ''.join(out)
+
 @app.get('/')
-def home(): return jsonify({'name':'Punto Verde Express Bot','status':'ok','demo':'/demo','meta_webhook':'/webhook','waia_webhook':'/waia-webhook'})
+def home(): return jsonify({'name':'Punto Verde Express Bot','status':'ok','page':'/pagina','demo':'/demo','meta_webhook':'/webhook','waia_webhook':'/waia-webhook'})
+
+@app.get('/pagina')
+def pagina():
+    day=datetime.now(TZ).weekday()
+    return render_template_string(WEBPAGE,today_html=web_menu_html(day),week_html=web_week_html())
 @app.get('/demo')
 def demo(): return render_template_string(DEMO)
 @app.post('/demo-message')
