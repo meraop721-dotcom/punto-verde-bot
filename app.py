@@ -285,16 +285,19 @@ function add(t,who,media=[]){
   const b=document.createElement('div');
   b.className='bubble';
   b.innerHTML=fmt(t)+'<div class="meta">'+now()+(who==='me'?' ✓✓':'')+'</div>';
-  if(who!=='me' && media && media.length){
+  if(media && media.length){
     const stack=document.createElement('div'); stack.className='media-stack';
     media.forEach(m=>{
       const card=document.createElement('div'); card.className='media-card';
-      const im=document.createElement('img'); im.src=m.url; im.alt=m.title||'Imagen del plato'; im.loading='lazy';
+      const im=document.createElement('img'); im.src=m.url; im.alt=m.title||'Imagen'; im.loading='lazy';
       im.onerror=()=>card.remove();
       card.appendChild(im);
-      const cap=document.createElement('div'); cap.className='media-cap';
-      cap.innerHTML='<strong>'+esc(m.title||'Imagen referencial')+'</strong><span>'+esc(m.credit||'Imagen referencial')+'</span>';
-      card.appendChild(cap); stack.appendChild(card);
+      if(who!=='me' && (m.title||m.credit)){
+        const cap=document.createElement('div'); cap.className='media-cap';
+        cap.innerHTML='<strong>'+esc(m.title||'Imagen referencial')+'</strong><span>'+esc(m.credit||'Imagen referencial')+'</span>';
+        card.appendChild(cap);
+      }
+      stack.appendChild(card);
     });
     b.appendChild(stack);
   }
@@ -335,20 +338,23 @@ async function s(){
 function quick(v){sendText(v)}
 async function img(){
   if(!f.files.length)return;
-  add('📷 Comprobante de Yape enviado','me');
+  const file=f.files[0];
+  const previewUrl=URL.createObjectURL(file);
+  add('📷 Imagen enviada','me',[{url:previewUrl,title:'',credit:''}]);
   showTyping(true);
   const fd=new FormData();
-  fd.append('image',f.files[0]);
+  fd.append('image',file);
   try{
     const r=await fetch('/demo-image',{method:'POST',body:fd});
     const j=await r.json();
     await new Promise(r=>setTimeout(r,450));
     showTyping(false);
-    add(j.reply,'bot')
+    add(j.reply,'bot',j.images||[]);
   }catch(e){
     showTyping(false);
-    add('No pude cargar la imagen. Intenta otra vez.','bot')
+    add('No pude cargar la imagen. Intenta otra vez.','bot');
   }
+  setTimeout(()=>URL.revokeObjectURL(previewUrl),10000);
   f.value=''
 }
 async function resetChat(){
