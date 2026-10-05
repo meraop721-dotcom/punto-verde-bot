@@ -29,11 +29,11 @@ UPLOAD_DIR=os.getenv('UPLOAD_DIR','/tmp/punto_verde_uploads')
 TZ=ZoneInfo('America/Lima')
 
 MENUS={
-0:{'dia':'Lunes','entradas':['Sopa de menestrón','Tamales','Crema de rocoto'],'segundos':['Ají de gallina','Lentejitas con pescado apanado','Tallarines con chuleta']},
-1:{'dia':'Martes','entradas':['Chilcana criolla','Papa rellena','Papa a la huancaína'],'segundos':['Seco de res con frejol','Pollo al horno con ensalada rusa','Pollo broaster']},
-2:{'dia':'Miércoles','entradas':['Caldo de gallina','Pastel de choclo','Anticuchos'],'segundos':['Puré con lonza en salsa agridulce','Arroz con pollo','Lomo saltado']},
-3:{'dia':'Jueves','entradas':['Caldo de mote','Crema de ocopa','Causa de pollo'],'segundos':['Cau-cau','Saltado de coliflor','Escabeche de pollo']},
-4:{'dia':'Viernes','entradas':['Empanadas de carne','Parihuela','Causa de atún'],'segundos':['Milanesa de pollo','Escabeche de pescado','Chaufa de pescado']},
+0:{'dia':'Lunes','entradas':['Sopa de pollo','Papa a la huancaína','Causa de pollo'],'segundos':['Arroz con pollo','Ají de gallina','Tallarines rojos con pollo']},
+1:{'dia':'Martes','entradas':['Aguadito de pollo','Papa rellena','Ensalada rusa'],'segundos':['Lomo saltado','Milanesa de pollo','Cau cau']},
+2:{'dia':'Miércoles','entradas':['Sopa de verduras','Ocopa','Tamal criollo'],'segundos':['Pescado frito','Arroz chaufa de pollo','Seco de pollo']},
+3:{'dia':'Jueves','entradas':['Caldo de gallina','Causa de pollo','Papa a la huancaína'],'segundos':['Arroz con pato','Pollo al horno','Tallarines verdes con pollo']},
+4:{'dia':'Viernes','entradas':['Chilcano de pescado','Causa de atún','Papa rellena'],'segundos':['Seco de cabrito','Lomo saltado','Pescado sudado']},
 }
 
 def money(value):
@@ -291,7 +291,7 @@ body{
     </header>
 
     <section class="info">
-      <span class="chip">🍽️ Menú S/ 12</span>
+      <span class="chip">🍽️ Menú S/ 10–15</span>
       <span class="chip">🛵 Delivery Guadalupe / Chepén</span>
       <span class="chip">💳 Yape o efectivo</span>
       <span class="chip">📦 Seguimiento</span>
