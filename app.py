@@ -291,7 +291,7 @@ body{
     </header>
 
     <section class="info">
-      <span class="chip">🍽️ Menú S/ 10–15</span>
+      <span class="chip">🍽️ Menú referencial S/ 12</span>
       <span class="chip">🛵 Delivery Guadalupe / Chepén</span>
       <span class="chip">💳 Yape o efectivo</span>
       <span class="chip">📦 Seguimiento</span>
@@ -590,7 +590,14 @@ def menu_text(day=None):
         return f"🍽️ *MENÚ DEL {m['dia'].upper()}*\n\n*Entradas*\n{e}\n\n*Segundos*\n{s}\n\n💰 {p}\n\nPara ordenar, responde *2*."
     if day==5:
         p=SATURDAY_GRILL_PRICE or 'por confirmar'
-        return f'🔥 *ESPECIAL DE SÁBADO: PARRILLAS*\n\nLos sábados ofrecemos únicamente parrillas.\nPrecio: {p}\n\nEscribe *RESERVAR* para dejar una reserva o *0* para volver.'
+        return (
+            '🔥 *ESPECIAL DE SÁBADO: PARRILLAS*\n\n'
+            '1. Pollo a la parrilla\n'
+            '2. Parrilla familiar\n'
+            '3. Chorizo + pollo + carne\n\n'
+            f'Precio: {p}\n\n'
+            'Escribe *RESERVAR* para dejar una reserva o *0* para volver.'
+        )
     return '🌿 Hoy es domingo y no tenemos atención programada. Escribe *0* para volver.'
 
 def reply(phone,text,force_day=None):
