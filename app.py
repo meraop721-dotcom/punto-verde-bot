@@ -1,5 +1,5 @@
 import os, json, sqlite3, hmac, hashlib, uuid, time, html
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import requests
 from flask import Flask, request, jsonify, Response, render_template_string, session
@@ -1034,7 +1034,6 @@ def admin_panel():
     en_ruta=sum(1 for r in rows if r[3]=='En camino')
     entregados=sum(1 for r in rows if r[3]=='Entregado')
     yapes=0
-    hoy=0
 
     def status_class(value):
         return {
@@ -1080,15 +1079,46 @@ def admin_panel():
             return 0.0
 
     today=datetime.now(TZ).date()
-    for oid,phone,details_json,status,created_at,updated_at in rows:
+    month_start=today.replace(day=1)
+    month_sales=0.0
+    month_orders=0
+    month_paid=0.0
+    day_sales={}
+    day_counts={}
+
+    month_prefix=month_start.isoformat()
+    with db() as c:
+        month_rows=c.execute(
+            'SELECT details,status,created_at FROM orders WHERE created_at>=? ORDER BY created_at ASC',
+            (month_prefix,)
+        ).fetchall()
+
+    for details_json,status,created_at in month_rows:
         try:
             d=json.loads(details_json or '{}')
         except Exception:
             d={}
         if d.get('pago')=='Yape' and order_payment_status(d)=='Pendiente de verificación':
             yapes+=1
-        if iso_date(created_at)==today and status!='Cancelado':
-            hoy+=order_total(d)
+        value=order_total(d)
+        created_date=iso_date(created_at)
+        if status!='Cancelado' and value>0:
+            month_sales+=value
+            month_orders+=1
+            if created_date:
+                day_sales[created_date]=day_sales.get(created_date,0.0)+value
+                day_counts[created_date]=day_counts.get(created_date,0)+1
+            if order_payment_status(d) in {'Pago verificado','Pagado','Pago al entregar'}:
+                month_paid+=value
+
+    # Si hay más de 150 pedidos visibles, las ventas siguen siendo exactas porque se calculan desde todos los pedidos del mes.
+    hoy=day_sales.get(today,0.0)
+    last7=[]
+    for offset in range(6,-1,-1):
+        day=today-timedelta(days=offset)
+        last7.append((day,day_sales.get(day,0.0),day_counts.get(day,0)))
+
+    avg_ticket=(month_sales/month_orders) if month_orders else 0.0
 
     cards=[]
     step_names=['Pedido recibido','Confirmado','En preparación','Listo para recojo','En camino','Entregado']
@@ -1269,11 +1299,11 @@ a{text-decoration:none}.topbar{position:sticky;top:0;z-index:30;background:linea
 .topinner{max-width:1220px;margin:auto;padding:13px 18px;display:flex;align-items:center;gap:11px}.brandmark{width:42px;height:42px;border-radius:13px;background:#fff;display:grid;place-items:center;font-size:22px;box-shadow:0 5px 14px rgba(0,0,0,.12)}
 .brandtext{flex:1;min-width:0}.brandtext b{display:block;font-size:16px}.brandtext span{display:block;margin-top:2px;font-size:10px;opacity:.78}.top-actions{display:flex;gap:7px}.top-actions a{padding:9px 11px;border:1px solid rgba(255,255,255,.20);border-radius:10px;color:#fff;background:rgba(255,255,255,.08);font-size:10px;font-weight:900}
 .shell{max-width:1220px;margin:auto;padding:20px 18px 45px}.hero{display:flex;align-items:end;justify-content:space-between;gap:15px;margin-bottom:15px}.hero h1{margin:0;font-size:27px;letter-spacing:-.6px}.hero p{margin:5px 0 0;color:var(--muted);font-size:11px}.live{padding:8px 10px;border-radius:99px;background:#e7f8ef;color:#11734f;border:1px solid #cdebdc;font-size:10px;font-weight:900;white-space:nowrap}.live:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#1bb77c;margin-right:5px;box-shadow:0 0 0 4px rgba(27,183,124,.12)}
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}.stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 5px 20px rgba(18,70,55,.04)}.stat .top{display:flex;justify-content:space-between;align-items:center}.stat .icon{font-size:17px}.stat b{display:block;margin-top:8px;font-size:25px;line-height:1;color:var(--g)}.stat span{display:block;margin-top:6px;color:var(--muted);font-size:10px;font-weight:800}.sales{border-left:3px solid var(--g)}.sales b{font-size:21px}
+.stats{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:12px}.stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 5px 20px rgba(18,70,55,.04)}.stat .top{display:flex;justify-content:space-between;align-items:center}.stat .icon{font-size:17px}.stat b{display:block;margin-top:8px;font-size:25px;line-height:1;color:var(--g)}.stat span{display:block;margin-top:6px;color:var(--muted);font-size:10px;font-weight:800}.sales{border-left:3px solid var(--g)}.sales b{font-size:21px}
 .toolbar{background:#fff;border:1px solid var(--line);border-radius:17px;padding:11px;margin-bottom:16px;box-shadow:0 5px 20px rgba(18,70,55,.035)}
 .filters{display:grid;grid-template-columns:1.6fr .9fr .9fr auto auto;gap:7px}.field{border:1px solid #d7e4dd;border-radius:10px;background:#fff;padding:10px 11px;color:#29483d;font-size:11px;outline:0;min-width:0}.field:focus{border-color:#77bea6;box-shadow:0 0 0 3px rgba(22,163,111,.08)}
 .btn{border:0;border-radius:10px;padding:10px 12px;font-size:10.5px;font-weight:900}.primary{background:#12a16d;color:#fff}.neutral{background:#eef3f1;color:#2b5548;border:1px solid #d9e5df}
-.toolbar-note{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;color:#81918a;font-size:9px}.count{font-weight:900;color:#45665a}
+.toolbar-note{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;color:#81918a;font-size:9px}.count{font-weight:900;color:#45665a}.sales-panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 15px;margin-bottom:12px;box-shadow:0 5px 20px rgba(18,70,55,.035)}.sales-title{display:flex;align-items:center;justify-content:space-between;gap:12px}.sales-title h2{margin:0;font-size:14px}.sales-title p{margin:4px 0 0;color:var(--muted);font-size:9px}.sales-month{padding:8px 10px;border-radius:11px;background:#e8f7f0;color:var(--g);font-size:9px;white-space:nowrap}.sales-month b{font-size:12px}.sales-days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}.sales-day{padding:9px 6px;text-align:center;border-radius:11px;background:#f7faf8;border:1px solid #e8efeb}.sales-day.today{background:#edf9f3;border-color:#bfe3d2;box-shadow:inset 0 0 0 1px #d8f0e4}.sales-day b{display:block;font-size:8px;color:#71847c}.sales-day strong{display:block;margin-top:4px;font-size:10px;color:var(--g)}.sales-day small{display:block;margin-top:3px;font-size:7.5px;color:#899890}.sales-foot{display:flex;justify-content:space-between;gap:10px;margin-top:9px;padding-top:9px;border-top:1px solid #edf2ef;color:#7d8f88;font-size:8.5px}.sales-foot b{color:#345a4d}
 .order-card{background:#fff;border:1px solid #dfe9e4;border-radius:20px;padding:16px;margin:13px 0;box-shadow:0 8px 28px rgba(18,70,55,.055);position:relative;overflow:hidden}.order-card.new{border-color:#f1d29b;box-shadow:0 9px 30px rgba(180,122,20,.09)}.order-card.new:before{content:"NUEVO";position:absolute;right:-31px;top:15px;transform:rotate(42deg);background:var(--orange);color:#fff;padding:5px 36px;font-size:8px;font-weight:1000;letter-spacing:.7px}
 .order-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid #edf2ef}.order-id{font-size:16px;font-weight:1000;color:#08624f}.order-time{margin-top:3px;color:var(--muted);font-size:9px}.badges{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}.pill{padding:6px 9px;border-radius:99px;font-size:8.8px;font-weight:1000}.st-new{background:#fff2db;color:#965a00}.st-ok{background:#e9f8ef;color:#11724c}.st-prep{background:#eaf0ff;color:#355fae}.st-ready{background:#f2ecff;color:#674aa7}.st-route{background:#e8f7ff;color:#176f99}.st-done{background:#e8f7ec;color:#24743e}.st-cancel{background:#ffeded;color:#a83d3d}.pay-wait{background:#fff4dc;color:#966000}.pay-ok{background:#e7f7ed;color:#18764c}.pay-bad{background:#ffeded;color:#a83a3a}.pay-cash{background:#eef0f3;color:#4c5964}
 .payment-alert{display:flex;align-items:center;gap:9px;margin:12px 0 0;padding:10px 11px;border-radius:12px;background:#fff7e7;border:1px solid #f3dcae;color:#8c5d09;font-size:12px}.payment-alert b{display:block;font-size:10px}.payment-alert span{display:block;margin-top:3px;font-size:9px;color:#9b7a3b}
@@ -1283,8 +1313,8 @@ a{text-decoration:none}.topbar{position:sticky;top:0;z-index:30;background:linea
 .timeline{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:14px 0 3px;padding:11px 8px;background:#f8faf9;border:1px solid #edf2ef;border-radius:13px}.tl-step{position:relative;text-align:center;color:#a0aaa5}.tl-step:not(:last-child):after{content:"";position:absolute;top:9px;right:-3px;width:100%;height:2px;background:#e6ece8;z-index:0}.tl-step span{position:relative;z-index:1;width:19px;height:19px;margin:auto;display:grid;place-items:center;border-radius:50%;background:#e7ece9;color:#7c8b85;font-size:8px;font-weight:1000;border:2px solid #f8faf9}.tl-step small{display:block;margin-top:5px;font-size:7px;line-height:1.2}.tl-step.done,.tl-step.active{color:var(--g);font-weight:900}.tl-step.done span,.tl-step.active span{background:var(--g);color:#fff;border-color:var(--g)}.tl-step.done:after{background:#71c6a6}.tl-step.active small{color:var(--g)}.cancel-state{margin:12px 0 2px;padding:10px 11px;border-radius:12px;background:#fff0f0;color:#a43b3b;border:1px solid #f1cccc;font-size:10px;font-weight:900}
 .card-actions{margin-top:13px;padding-top:12px;border-top:1px solid #edf2ef;display:grid;grid-template-columns:auto 1fr 1fr;gap:9px;align-items:end}.link-actions{display:flex;flex-direction:column;gap:7px}.receipt,.wa{display:block;text-align:center;padding:9px 10px;border-radius:10px;background:#f3f7f5;border:1px solid #dce7e1;font-size:9px;font-weight:1000;color:#376155}.link-actions .wa{margin-left:0}.card-actions label{display:block;margin-bottom:5px;font-size:8px;text-transform:uppercase;letter-spacing:.6px;font-weight:1000;color:#788a83}.control{display:flex;gap:6px}.control select{flex:1;min-width:0;border:1px solid #d6e3dc;border-radius:10px;padding:9px;background:#fff;font-size:10px;color:#26453a}.control .primary{white-space:nowrap}.btn.dark{background:var(--g);color:#fff}
 .empty{background:#fff;border:1px dashed #cfded6;border-radius:20px;padding:44px 20px;text-align:center;color:#6f827a}.empty-icon{font-size:32px}.empty h3{margin:9px 0 4px;color:#315247}.empty p{margin:0;font-size:11px}
-@media(max-width:950px){.stats{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:1fr 1fr 1fr}.filters .search{grid-column:1/-1}.filters .btn{min-height:39px}.detail-grid{grid-template-columns:repeat(2,1fr)}.card-actions{grid-template-columns:1fr}.link-actions{display:grid;grid-template-columns:1fr 1fr}.timeline{grid-template-columns:repeat(6,1fr)}}
-@media(max-width:620px){.topinner{padding:11px 12px}.top-actions a:first-child{display:none}.shell{padding:14px 10px 30px}.hero{align-items:flex-start;flex-direction:column}.hero h1{font-size:23px}.live{font-size:9px}.stats{grid-template-columns:repeat(2,1fr);gap:7px}.stat{padding:11px}.stat b{font-size:22px}.sales b{font-size:19px}.filters{grid-template-columns:1fr}.filters .search{grid-column:auto}.toolbar-note{align-items:flex-start;flex-direction:column}.order-card{padding:14px;border-radius:17px}.order-top{flex-direction:column}.badges{justify-content:flex-start}.order-main{align-items:flex-start}.pricebox{min-width:90px}.detail-grid{grid-template-columns:1fr 1fr}.timeline{gap:2px;padding:9px 4px}.tl-step small{font-size:6.5px}.card-actions{grid-template-columns:1fr}.link-actions{grid-template-columns:1fr 1fr}.control{flex-direction:column}}
+@media(max-width:950px){.stats{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:1fr 1fr 1fr}.filters .search{grid-column:1/-1}.filters .btn{min-height:39px}.detail-grid{grid-template-columns:repeat(2,1fr)}.card-actions{grid-template-columns:1fr}.link-actions{display:grid;grid-template-columns:1fr 1fr}.timeline{grid-template-columns:repeat(6,1fr)}.sales-days{grid-template-columns:repeat(7,1fr)}}
+@media(max-width:620px){.topinner{padding:11px 12px}.top-actions a:first-child{display:none}.shell{padding:14px 10px 30px}.hero{align-items:flex-start;flex-direction:column}.hero h1{font-size:23px}.live{font-size:9px}.stats{grid-template-columns:repeat(2,1fr);gap:7px}.stat{padding:11px}.sales-title{align-items:flex-start;flex-direction:column}.sales-month{width:100%;text-align:center}.sales-days{grid-template-columns:repeat(2,1fr)}.sales-day.today{grid-column:1/-1}.sales-foot{align-items:flex-start;flex-direction:column}.stat b{font-size:22px}.sales b{font-size:19px}.filters{grid-template-columns:1fr}.filters .search{grid-column:auto}.toolbar-note{align-items:flex-start;flex-direction:column}.order-card{padding:14px;border-radius:17px}.order-top{flex-direction:column}.badges{justify-content:flex-start}.order-main{align-items:flex-start}.pricebox{min-width:90px}.detail-grid{grid-template-columns:1fr 1fr}.timeline{gap:2px;padding:9px 4px}.tl-step small{font-size:6.5px}.card-actions{grid-template-columns:1fr}.link-actions{grid-template-columns:1fr 1fr}.control{flex-direction:column}}
 </style>
 </head>
 <body>
@@ -1307,7 +1337,21 @@ a{text-decoration:none}.topbar{position:sticky;top:0;z-index:30;background:linea
     <div class="stat"><div class="top"><span class="icon">🆕</span></div><b>__NUEVOS__</b><span>Pedidos nuevos</span></div>
     <div class="stat"><div class="top"><span class="icon">📱</span></div><b>__YAPES__</b><span>Yapes por verificar</span></div>
     <div class="stat"><div class="top"><span class="icon">🛵</span></div><b>__RUTA__</b><span>Pedidos en camino</span></div>
-    <div class="stat sales"><div class="top"><span class="icon">💰</span></div><b>__VENTAS_HOY__</b><span>Ventas no canceladas de hoy</span></div>
+    <div class="stat sales"><div class="top"><span class="icon">💰</span></div><b>__VENTAS_HOY__</b><span>Ventas registradas hoy</span></div>
+    <div class="stat sales"><div class="top"><span class="icon">📅</span></div><b>__VENTAS_MES__</b><span>Ventas registradas este mes</span></div>
+    <div class="stat"><div class="top"><span class="icon">🧮</span></div><b>__TICKET_MES__</b><span>Ticket promedio del mes</span></div>
+  </section>
+
+  <section class="sales-panel">
+    <div class="sales-title">
+      <div><h2>Resumen de ventas</h2><p>Ventas calculadas con pedidos no cancelados.</p></div>
+      <div class="sales-month">Este mes · <b>__VENTAS_MES__</b></div>
+    </div>
+    <div class="sales-days">__DAY_SALES__</div>
+    <div class="sales-foot">
+      <span>💳 Pagado/verificado: <b>__PAGADO_MES__</b></span>
+      <span>🧾 <b>__PEDIDOS_MES__</b> pedidos · Ticket promedio: <b>__TICKET_MES__</b></span>
+    </div>
   </section>
 
   <section class="toolbar">
@@ -1336,6 +1380,16 @@ setInterval(function(){ if(!document.hidden){ location.reload(); } },45000);
     page=page.replace('__YAPES__',str(yapes))
     page=page.replace('__RUTA__',str(en_ruta))
     page=page.replace('__VENTAS_HOY__',money(hoy))
+    page=page.replace('__VENTAS_MES__',money(month_sales))
+    page=page.replace('__PAGADO_MES__',money(month_paid))
+    page=page.replace('__PEDIDOS_MES__',str(month_orders))
+    page=page.replace('__TICKET_MES__',money(avg_ticket))
+    day_html=[]
+    labels=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+    for day,value,count in last7:
+        cls=' today' if day==today else ''
+        day_html.append(f'<div class="sales-day{cls}"><b>{labels[day.weekday()]} {day.day:02d}</b><strong>{html.escape(money(value))}</strong><small>{count} pedido{"s" if count!=1 else ""}</small></div>')
+    page=page.replace('__DAY_SALES__',''.join(day_html))
     page=page.replace('__Q__',html.escape(request.args.get('q') or ''))
     page=page.replace('__STATUS_OPTIONS__',status_options)
     page=page.replace('__PAY_OPTIONS__',pay_options)
